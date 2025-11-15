@@ -1,0 +1,13 @@
+Email,First Name,Last Name,Job Title,Company Name,# Employees,Industry,Country,Lead Source
+priya@northwind.io,priya,shah,VP of Revenue Operations,Northwind,450,SaaS,US,demo_request
+tom.b@ledgerly.com,tom,baker,Head of Sales,Ledgerly,120,Fintech,GB,webinar
+ana@shopwave.co,ana,lima,Growth Marketing Manager,Shopwave,35,Ecommerce,DE,content
+jake.miller@gmail.com,jake,miller,Founder,,3,Software,US,list
+priya@northwind.io,Priya,Shah,VP RevOps,Northwind,450,SaaS,US,webinar
+not-an-email,bad,row,CEO,Nowhere,10,SaaS,US,list
+chen@medibase.health,wei,chen,Director of Sales,Medibase,2300,Healthcare,SG,demo_request
+lucas@quantpay.com,lucas,moreau,Chief Revenue Officer,QuantPay,5000,Fintech,FR,demo_request
+sara@tinyapps.dev,sara,ng,Software Engineer,TinyApps,8,Software,AU,content
+mo@cloudcart.com,mohammed,ali,RevOps Lead,CloudCart,180,SaaS,IN,webinar
+emma@brightpath.ca,emma,roy,Marketing Coordinator,Brightpath,60,Education,CA,list
+dev@stackforge.io,dev,patel,CTO,Stackforge,90,Software,US,demo_request

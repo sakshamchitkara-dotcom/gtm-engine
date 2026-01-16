@@ -1,0 +1,77 @@
+import tempfile
+import unittest
+from datetime import date
+from pathlib import Path
+
+from gtm import analytics, pipeline
+from gtm.enrich import enrich, seniority_of, size_band
+from gtm.ingest import load_csv
+from gtm.models import Lead
+from gtm.routing import Router
+from gtm.scoring import load_config, score
+from gtm.sequences import build
+from gtm.store import Store
+
+SAMPLE = Path(__file__).resolve().parent.parent / "data" / "sample_leads.csv"
+
+
+class GTMTest(unittest.TestCase):
+    def test_ingest_drops_invalid_and_dupes(self):
+        leads, stats = load_csv(SAMPLE)
+        self.assertEqual(stats, {"rows": 12, "invalid": 1, "duplicates": 1, "kept": 10})
+        self.assertEqual(leads[0].first_name, "Priya")
+
+    def test_enrichment_rules(self):
+        self.assertEqual(seniority_of("VP of Revenue Operations"), "vp")
+        self.assertEqual(seniority_of("Chief Revenue Officer"), "c_level")
+        self.assertEqual(seniority_of("Software Engineer"), "ic")
+        self.assertEqual(seniority_of("Head of Sales"), "vp")
+        self.assertEqual(size_band(450), "upper_mid")
+        self.assertTrue(enrich(Lead(email="x@gmail.com")).is_free_email)
+
+    def test_scoring_orders_icp_above_junk(self):
+        cfg = load_config()
+        good = score(enrich(Lead(email="a@co.io", title="VP Revenue", employees=300,
+                                 industry="saas", country="US", source="demo_request")), cfg)
+        bad = score(enrich(Lead(email="b@gmail.com", title="Student", employees=1)), cfg)
+        self.assertEqual(good.tier, "A")
+        self.assertEqual(good.score, 100)  # clamped
+        self.assertEqual((bad.score, bad.tier), (0, "D"))
+
+    def test_routing_round_robin_and_nurture(self):
+        r = Router()
+        a = [r.assign(Lead(email=f"{i}@x.com", tier="B", country="US")).owner for i in range(4)]
+        self.assertEqual(a, ["sam@acme.io", "riley@acme.io", "alex@acme.io", "sam@acme.io"])
+        self.assertEqual(r.assign(Lead(email="d@x.com", tier="D")).owner, "nurture")
+        ent = Lead(email="e@x.com", tier="A", size_band="enterprise", country="DE")
+        self.assertEqual(r.assign(ent).owner, "lena@acme.io")
+
+    def test_sequence_skips_weekends(self):
+        lead = Lead(email="a@co.io", first_name="Ana", company="Co", tier="A", owner="sam@acme.io")
+        touches = build(lead, date(2026, 9, 4))  # Friday
+        self.assertEqual(len(touches), 5)
+        self.assertEqual(touches[1]["date"], "2026-09-07")  # sat -> mon
+        self.assertIn("Ana", touches[0]["body"])
+        self.assertEqual(build(Lead(email="d@x.com", tier="D"), date(2026, 9, 4)), [])
+
+    def test_pipeline_end_to_end(self):
+        with tempfile.TemporaryDirectory() as d:
+            store = Store(f"{d}/t.db")
+            leads, stats = pipeline.run(SAMPLE, store, start=date(2026, 9, 1))
+            rows = store.leads()
+            self.assertEqual(len(rows), 10)
+            self.assertEqual(rows[0]["tier"], "A")
+            store.set_stage("priya@northwind.io", "meeting")
+            f = dict((s, n) for s, n, _ in analytics.funnel(store.leads()))
+            self.assertEqual((f["new"], f["contacted"], f["meeting"], f["won"]), (10, 1, 1, 0))
+            with self.assertRaises(KeyError):
+                store.set_stage("ghost@x.com", "won")
+            # re-running is idempotent
+            pipeline.run(SAMPLE, store, start=date(2026, 9, 1))
+            self.assertEqual(len(store.leads()), 10)
+            stages = {r["email"]: r["stage"] for r in store.leads()}
+            self.assertEqual(stages["priya@northwind.io"], "meeting")  # upsert keeps funnel stage
+
+
+if __name__ == "__main__":
+    unittest.main()

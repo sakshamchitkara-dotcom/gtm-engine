@@ -41,7 +41,7 @@ def _dept(title):
 def build(lead, start=None):
     """Returns list of touch dicts. Tier D / nurture leads get no outbound."""
     steps = CADENCES.get(lead.tier, [])
-    if not steps or lead.owner == "nurture":
+    if not steps or lead.owner in ("nurture", "unassigned"):
         return []
     start = start or date.today()
     ctx = {

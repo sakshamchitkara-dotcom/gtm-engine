@@ -1,0 +1,7 @@
+{
+  "ae": {"NA": ["maya@acme.io", "jordan@acme.io"], "EMEA": ["lena@acme.io"], "APAC": ["arjun@acme.io"]},
+  "sdr": {"NA": ["sam@acme.io", "riley@acme.io", "alex@acme.io"], "EMEA": ["noah@acme.io", "ella@acme.io"],
+          "APAC": ["kai@acme.io"]},
+  "capacity": {"default": 150, "maya@acme.io": 40, "jordan@acme.io": 40, "lena@acme.io": 40, "arjun@acme.io": 40},
+  "daily_send_cap": {"default": 40, "kai@acme.io": 25}
+}

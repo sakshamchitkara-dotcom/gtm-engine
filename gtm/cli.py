@@ -5,6 +5,7 @@ from datetime import date
 
 from . import analytics, pipeline
 from .store import STAGES, Store
+from .verify import verify
 
 
 def main(argv=None):
@@ -30,6 +31,9 @@ def main(argv=None):
 
     sub.add_parser("report", help="funnel + distribution report")
 
+    v = sub.add_parser("verify", help="check email deliverability (valid/risky/invalid)")
+    v.add_argument("emails", nargs="+")
+
     ex = sub.add_parser("export", help="CRM-ready CSV to stdout")
     ex.add_argument("--tier")
 
@@ -39,7 +43,7 @@ def main(argv=None):
     if a.cmd == "run":
         leads, stats = pipeline.run(a.csv, store, a.config, a.start)
         print(f"rows={stats['rows']} kept={stats['kept']} invalid={stats['invalid']} "
-              f"dupes={stats['duplicates']} touches={stats['touches']}")
+              f"dupes={stats['duplicates']} undeliverable={stats['undeliverable']} touches={stats['touches']}")
     elif a.cmd == "leads":
         for row in store.leads(a.tier)[: a.limit]:
             print(f"{row['score']:>3} {row['tier']}  {row['email']:<32} {row['owner']}")
@@ -49,6 +53,10 @@ def main(argv=None):
     elif a.cmd == "stage":
         store.set_stage(a.email, a.stage)
         print(f"{a.email} -> {a.stage}")
+    elif a.cmd == "verify":
+        for e in a.emails:
+            status, why = verify(e)
+            print(f"{status:<8} {e}  {why}".rstrip())
     elif a.cmd == "report":
         print(analytics.render(store.leads()))
     elif a.cmd == "export":

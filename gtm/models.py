@@ -17,6 +17,7 @@ class Lead:
     seniority: str = ""
     size_band: str = ""
     is_free_email: bool = False
+    email_status: str = ""
     score: int = 0
     tier: str = ""
     owner: str = ""

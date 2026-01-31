@@ -43,7 +43,7 @@ def main(argv=None):
     if a.cmd == "run":
         leads, stats = pipeline.run(a.csv, store, a.config, a.start)
         print(f"rows={stats['rows']} kept={stats['kept']} invalid={stats['invalid']} "
-              f"dupes={stats['duplicates']} undeliverable={stats['undeliverable']} touches={stats['touches']}")
+              f"dupes={stats['duplicates']}+{stats['person_dupes']} undeliverable={stats['undeliverable']} touches={stats['touches']}")
     elif a.cmd == "leads":
         for row in store.leads(a.tier)[: a.limit]:
             print(f"{row['score']:>3} {row['tier']}  {row['email']:<32} {row['owner']}")

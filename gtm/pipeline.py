@@ -1,4 +1,5 @@
 """ingest -> enrich -> score -> route -> sequence, end to end."""
+from .dedupe import dedupe
 from .enrich import enrich
 from .ingest import load_csv
 from .routing import Router
@@ -11,6 +12,7 @@ def run(csv_path, store, config_path=None, start=None):
     cfg = load_config(config_path)
     router = Router()
     leads, stats = load_csv(csv_path)
+    leads, stats["person_dupes"] = dedupe(leads)
     kept = []
     for lead in leads:
         lead.email_status, _ = verify(lead.email)

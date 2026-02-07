@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS touches (
     email TEXT, step INTEGER, date TEXT, channel TEXT, subject TEXT, body TEXT,
     PRIMARY KEY (email, step)
 );
+CREATE TABLE IF NOT EXISTS suppression (
+    value TEXT PRIMARY KEY, reason TEXT, at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY, email TEXT, kind TEXT, at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -59,3 +62,16 @@ class Store:
     def touches_due(self, on_date):
         return [dict(r) for r in self.db.execute(
             "SELECT * FROM touches WHERE date<=? ORDER BY date, email", (on_date,))]
+
+    def suppress(self, value, reason=""):
+        """value is an email or a bare domain."""
+        with self.db:
+            self.db.execute("INSERT OR IGNORE INTO suppression (value, reason) VALUES (?,?)",
+                            (value.strip().lower(), reason))
+
+    def suppressed(self):
+        return {r[0] for r in self.db.execute("SELECT value FROM suppression")}
+
+    def clear_touches(self, email):
+        with self.db:
+            self.db.execute("DELETE FROM touches WHERE email=?", (email.lower(),))

@@ -1,4 +1,5 @@
 """ingest -> enrich -> score -> route -> sequence, end to end."""
+from . import compliance
 from .dedupe import dedupe
 from .enrich import enrich
 from .ingest import load_csv
@@ -20,9 +21,15 @@ def run(csv_path, store, config_path=None, start=None):
             kept.append(lead)
     stats["undeliverable"] = len(leads) - len(kept)
     leads, touches = kept, []
+    suppressed = store.suppressed()
     for lead in leads:
         router.assign(score(enrich(lead), cfg))
-        touches += sequences.build(lead, start)
+        lead.blocked = compliance.check(lead, suppressed)
+        if lead.blocked:
+            store.clear_touches(lead.email)
+        else:
+            touches += sequences.build(lead, start)
+    stats["blocked"] = sum(1 for l in leads if l.blocked)
     store.upsert_leads(leads)
     store.save_touches(touches)
     stats["touches"] = len(touches)

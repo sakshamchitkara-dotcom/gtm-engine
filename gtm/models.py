@@ -18,6 +18,7 @@ class Lead:
     size_band: str = ""
     is_free_email: bool = False
     email_status: str = ""
+    blocked: str = ""  # why we may not contact them, if anything
     score: int = 0
     tier: str = ""
     owner: str = ""

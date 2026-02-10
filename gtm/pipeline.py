@@ -1,5 +1,5 @@
 """ingest -> enrich -> score -> route -> sequence, end to end."""
-from . import compliance
+from . import compliance, intent
 from .dedupe import dedupe
 from .enrich import enrich
 from .ingest import load_csv
@@ -9,7 +9,7 @@ from . import sequences
 from .verify import verify
 
 
-def run(csv_path, store, config_path=None, start=None):
+def run(csv_path, store, config_path=None, start=None, asof=None):
     cfg = load_config(config_path)
     router = Router()
     leads, stats = load_csv(csv_path)
@@ -22,7 +22,9 @@ def run(csv_path, store, config_path=None, start=None):
     stats["undeliverable"] = len(leads) - len(kept)
     leads, touches = kept, []
     suppressed = store.suppressed()
+    pts = intent.points(store.signals(), asof)
     for lead in leads:
+        lead.intent = intent.for_lead(lead, pts)
         router.assign(score(enrich(lead), cfg))
         lead.blocked = compliance.check(lead, suppressed)
         if lead.blocked:

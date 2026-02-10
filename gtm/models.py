@@ -19,6 +19,7 @@ class Lead:
     is_free_email: bool = False
     email_status: str = ""
     blocked: str = ""  # why we may not contact them, if anything
+    intent: int = 0
     score: int = 0
     tier: str = ""
     owner: str = ""

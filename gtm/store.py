@@ -60,7 +60,13 @@ class Store:
         q, args = "SELECT * FROM leads", ()
         if tier:
             q, args = q + " WHERE tier=?", (tier,)
-        return [dict(r) for r in self.db.execute(q + " ORDER BY score DESC", args)]
+        return [self._record(r) for r in self.db.execute(q + " ORDER BY score DESC", args)]
+
+    @staticmethod
+    def _record(row):
+        """Lead JSON merged with the columns; columns win (stage/owner change after import)."""
+        row = dict(row)
+        return {**json.loads(row.pop("data")), **row}
 
     def touches_due(self, on_date):
         return [dict(r) for r in self.db.execute(

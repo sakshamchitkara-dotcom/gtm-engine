@@ -62,6 +62,14 @@ class Store:
             q, args = q + " WHERE tier=?", (tier,)
         return [self._record(r) for r in self.db.execute(q + " ORDER BY score DESC", args)]
 
+    def lead(self, email):
+        r = self.db.execute("SELECT * FROM leads WHERE email=?", (email.lower(),)).fetchone()
+        return self._record(r) if r else None
+
+    def add_event(self, email, kind):
+        with self.db:
+            self.db.execute("INSERT INTO events (email, kind) VALUES (?,?)", (email.lower(), kind))
+
     @staticmethod
     def _record(row):
         """Lead JSON merged with the columns; columns win (stage/owner change after import)."""

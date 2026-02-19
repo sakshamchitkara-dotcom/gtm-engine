@@ -3,7 +3,7 @@ import csv
 import sys
 from datetime import date, datetime
 
-from . import accounts, analytics, compliance, intent, pipeline
+from . import accounts, analytics, compliance, intent, pipeline, replies
 from .store import STAGES, Store
 from .verify import verify
 
@@ -52,6 +52,10 @@ def main(argv=None):
     un = sub.add_parser("unsubscribe", help="suppress an email, cancel its touches, mark it lost")
     un.add_argument("email")
 
+    rp = sub.add_parser("reply", help="classify an inbound reply and update the lead")
+    rp.add_argument("email")
+    rp.add_argument("text", help="reply body, or - to read stdin")
+
     a = p.parse_args(argv)
     store = Store(a.db)
 
@@ -80,6 +84,9 @@ def main(argv=None):
     elif a.cmd == "unsubscribe":
         compliance.unsubscribe(store, a.email)
         print(f"{a.email} unsubscribed")
+    elif a.cmd == "reply":
+        label, note = replies.apply(store, a.email, sys.stdin.read() if a.text == "-" else a.text)
+        print(f"{a.email}: {label} -> {note}")
     elif a.cmd == "verify":
         for e in a.emails:
             status, why = verify(e)

@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS suppression (
 CREATE TABLE IF NOT EXISTS signals (
     target TEXT, signal TEXT, at TEXT, PRIMARY KEY (target, signal, at)
 );
+CREATE TABLE IF NOT EXISTS sends (
+    email TEXT, step INTEGER, owner TEXT, sent_on TEXT, PRIMARY KEY (email, step)
+);
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY, email TEXT, kind TEXT, at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -101,3 +104,13 @@ class Store:
 
     def signals(self):
         return [tuple(r) for r in self.db.execute("SELECT target, signal, at FROM signals")]
+
+    def record_send(self, email, step, owner, sent_on):
+        with self.db:
+            self.db.execute("INSERT OR IGNORE INTO sends VALUES (?,?,?,?)", (email, step, owner, sent_on))
+
+    def sent_keys(self):
+        return {(r[0], r[1]) for r in self.db.execute("SELECT email, step FROM sends")}
+
+    def sends_on(self, day, owner):
+        return self.db.execute("SELECT COUNT(*) FROM sends WHERE sent_on=? AND owner=?", (day, owner)).fetchone()[0]

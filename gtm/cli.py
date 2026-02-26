@@ -3,7 +3,7 @@ import csv
 import sys
 from datetime import date, datetime
 
-from . import accounts, analytics, compliance, experiments, forecast, intent, outbox, pipeline, replies
+from . import accounts, analytics, compliance, digest, experiments, forecast, intent, outbox, pipeline, replies
 from .routing import load_team
 from .store import STAGES, Store
 from .verify import verify
@@ -67,6 +67,11 @@ def main(argv=None):
 
     sub.add_parser("forecast", help="weighted pipeline per owner (stage prob x ACV)")
 
+    dg = sub.add_parser("digest", help="per-rep markdown daily digest")
+    dg.add_argument("--date", default=date.today().isoformat())
+    dg.add_argument("--rep", help="print one rep's digest instead of writing all")
+    dg.add_argument("--out", default="digests")
+
     a = p.parse_args(argv)
     store = Store(a.db)
 
@@ -105,6 +110,12 @@ def main(argv=None):
         print(" ".join(f"{k}={v}" for k, v in stats.items()) + (f"  (dry run -> {a.out}/{a.date}/)" if a.dry_run else ""))
     elif a.cmd == "forecast":
         print(forecast.render(store.leads()))
+    elif a.cmd == "digest":
+        if a.rep:
+            print(digest.render(store, a.rep, a.date))
+        else:
+            for path in digest.write_all(store, a.date, a.out):
+                print(path)
     elif a.cmd == "verify":
         for e in a.emails:
             status, why = verify(e)

@@ -32,7 +32,8 @@ STAGES = ["new", "contacted", "replied", "meeting", "opportunity", "won", "lost"
 
 class Store:
     def __init__(self, path="gtm.db"):
-        self.db = sqlite3.connect(path)
+        # web.py hands the connection to its (single) server thread
+        self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
 

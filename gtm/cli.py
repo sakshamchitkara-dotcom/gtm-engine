@@ -72,7 +72,14 @@ def main(argv=None):
     dg.add_argument("--rep", help="print one rep's digest instead of writing all")
     dg.add_argument("--out", default="digests")
 
+    sv = sub.add_parser("serve", help="JSON API + dashboard (GTM_API_TOKEN enables auth)")
+    sv.add_argument("--host", default="127.0.0.1")
+    sv.add_argument("--port", type=int, default=8000)
+
     a = p.parse_args(argv)
+    if a.cmd == "serve":
+        from . import web
+        return web.serve(a.db, a.host, a.port)
     store = Store(a.db)
 
     if a.cmd == "run":

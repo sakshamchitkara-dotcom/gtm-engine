@@ -1,4 +1,4 @@
-"""stdlib JSON API (+ dashboard) over the store.
+"""stdlib JSON API + HTML dashboard (GET /) over the store.
 
 GET  /api/leads?tier=&owner=&limit=   GET /api/report   GET /api/forecast   GET /api/accounts
 POST /api/leads    {lead} or [{lead}, ...]      -> runs the pipeline on them
@@ -19,6 +19,7 @@ import sys
 from html import escape
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from . import accounts, analytics, compliance, forecast, intent, pipeline, replies
@@ -26,6 +27,7 @@ from .ingest import normalize
 from .outbox import unsub_token
 from .store import Store
 
+STATIC = Path(__file__).resolve().parent / "static"
 MAX_BODY = 1_000_000
 MAX_ITEMS = 1000
 LEAD_FIELDS = {"email", "first_name", "last_name", "title", "company", "employees", "industry", "country", "source"}
@@ -155,6 +157,12 @@ class Handler(BaseHTTPRequestHandler):
         sys.stderr.write(f"{self.command} {urlparse(self.path).path} {args[1] if len(args) > 1 else ''}\n")
 
     # --- routes ---------------------------------------------------------
+    def get_index(self, q):
+        self._send(HTTPStatus.OK, (STATIC / "index.html").read_bytes(), "text/html")
+
+    def get_app_js(self, q):
+        self._send(HTTPStatus.OK, (STATIC / "app.js").read_bytes(), "text/javascript")
+
     def get_api_leads(self, q):
         rows = self.store.leads(q.get("tier"))
         if q.get("owner"):
@@ -213,11 +221,12 @@ class Handler(BaseHTTPRequestHandler):
         self._send(HTTPStatus.OK, f"<!doctype html><p>{escape(email)} is unsubscribed.</p>", "text/html")
 
 
-ROUTES = {(m, path): f"{m}_{path.strip('/').replace('/', '_')}" for m, path in [
+ROUTES = {("get", "/"): "get_index", ("get", "/app.js"): "get_app_js"}
+ROUTES.update({(m, path): f"{m}_{path.strip('/').replace('/', '_')}" for m, path in [
     ("get", "/api/leads"), ("get", "/api/report"), ("get", "/api/forecast"), ("get", "/api/accounts"),
     ("post", "/api/leads"), ("post", "/api/signals"), ("post", "/api/replies"),
     ("get", "/unsubscribe"), ("post", "/unsubscribe"),
-]}
+]})
 
 
 def make_server(store, host="127.0.0.1", port=8000, env=os.environ):

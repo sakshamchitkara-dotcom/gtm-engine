@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GTM Engine</title>
+<style>
+  :root { --bg: #f7f7f5; --panel: #fff; --ink: #1d1d1b; --muted: #6b6b66; --line: #e4e4df; --accent: #2f5bd3; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151514; --panel: #1f1f1d; --ink: #ecece8; --muted: #9a9a93; --line: #33332f; --accent: #7d9cf0; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+  header { padding: 20px 16px 8px; max-width: 1100px; margin: auto; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  h1 { font-size: 20px; margin: 0; }
+  #status { color: var(--muted); }
+  main { max-width: 1100px; margin: auto; padding: 0 16px 40px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow-x: auto; }
+  section.wide { grid-column: 1 / -1; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
+  .kpis { display: flex; gap: 24px; flex-wrap: wrap; }
+  .kpi b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }
+  .kpi span { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; }
+  td.n, th.n { text-align: right; }
+  .bar { height: 8px; background: var(--accent); border-radius: 4px; }
+  select, input, button { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
+  #auth { display: none; gap: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>GTM Engine</h1><span id="status">loading...</span>
+  <form id="auth"><input id="token" type="password" placeholder="API token" aria-label="API token"><button>Connect</button></form>
+</header>
+<main>
+  <section class="wide"><h2>Overview</h2><div class="kpis" id="kpis"></div></section>
+  <section><h2>Funnel</h2><table id="funnel"></table></section>
+  <section><h2>Tier mix</h2><table id="tiers"></table></section>
+  <section class="wide"><h2>Forecast</h2><table id="forecast"></table></section>
+  <section class="wide">
+    <h2>Leads <select id="tier" aria-label="Tier filter"><option value="">all tiers</option><option>A</option><option>B</option><option>C</option><option>D</option></select></h2>
+    <table id="leads"></table>
+  </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

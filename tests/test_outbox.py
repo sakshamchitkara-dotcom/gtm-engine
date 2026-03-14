@@ -57,6 +57,23 @@ class OutboxTest(unittest.TestCase):
         again = outbox.send_due(self.store, "2026-09-01", self.team, transport=FakeSMTP())
         self.assertEqual(again["skipped_sent"], stats["sent"])
 
+    def test_refused_recipient_does_not_stop_the_run(self):
+        class Refusing(FakeSMTP):
+            def send_message(self, msg):
+                if msg["To"] == "priya@northwind.io":
+                    raise outbox.smtplib.SMTPRecipientsRefused({msg["To"]: (550, b"no such user")})
+                super().send_message(msg)
+        smtp = Refusing()
+        stats = outbox.send_due(self.store, "2026-09-01", self.team, transport=smtp)
+        self.assertEqual(stats["refused"], 1)
+        self.assertEqual(stats["sent"], len(smtp.msgs))
+        self.assertNotIn(("priya@northwind.io", 1), self.store.sent_keys())
+
+    def test_missing_smtp_config_is_a_clean_error(self):
+        with mock.patch.dict("os.environ", {}, clear=True), self.assertRaisesRegex(RuntimeError, "SMTP_HOST"):
+            outbox.send_due(self.store, "2026-09-01", self.team)
+        self.assertEqual(self.store.sent_keys(), set())
+
     def test_safe_filename(self):
         self.assertEqual(outbox._safe("../../a/b@x.io-1.eml"), ".._.._a_b@x.io-1.eml")
 

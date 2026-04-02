@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Unit tests
+        run: python -m unittest -v
+
+      - name: End-to-end smoke on generated data
+        env:
+          GTM_API_TOKEN: ci-token
+        run: |
+          set -euo pipefail
+          pip install -e .
+          python scripts/gen_leads.py --out /tmp/gen --asof 2026-09-25
+          gtm --db /tmp/ci.db signals /tmp/gen/signals.csv
+          gtm --db /tmp/ci.db run /tmp/gen/leads.csv --start 2026-09-28 --asof 2026-09-25T18:00:00
+          gtm --db /tmp/ci.db report
+          gtm --db /tmp/ci.db forecast
+          gtm --db /tmp/ci.db digest --date 2026-09-28 --out /tmp/digests
+          gtm --db /tmp/ci.db outbox --date 2026-09-28 --dry-run --out /tmp/outbox
+          test "$(find /tmp/outbox -name '*.eml' | wc -l)" -gt 0
+          gtm --db /tmp/ci.db serve --port 8765 & srv=$!
+          for i in $(seq 1 20); do curl -s -o /dev/null localhost:8765/ && break; sleep 0.5; done
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8765/api/report)" = 401
+          curl -sf -H "Authorization: Bearer $GTM_API_TOKEN" localhost:8765/api/report | python -m json.tool | head -20
+          kill $srv

@@ -76,6 +76,14 @@ class WebTest(unittest.TestCase):
         self.assertEqual((status, out["leads"][0]["tier"]), (201, "A"))
         self.assertIsNotNone(self.store.lead("new.vp@web-co.io"))
 
+    def test_round_robin_advances_across_requests(self):
+        owners = set()
+        for i in range(3):
+            body = {"email": f"rr{i}@rr{i}-co.io", "title": "Manager", "employees": 60,
+                    "industry": "saas", "country": "US", "source": "webinar"}
+            owners.add(json.loads(self.call("/api/leads", body)[1])["leads"][0]["owner"])
+        self.assertEqual(len(owners), 3)
+
     def test_signals_and_reply_webhook(self):
         status, body = self.call("/api/signals", [{"email": "ana@shopwave.co", "signal": "pricing_page",
                                                    "at": "2026-09-20T10:00:00Z"}])

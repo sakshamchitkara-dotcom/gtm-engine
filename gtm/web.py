@@ -25,6 +25,7 @@ from urllib.parse import parse_qs, urlparse
 from . import accounts, analytics, compliance, forecast, intent, pipeline, replies
 from .ingest import normalize
 from .outbox import unsub_token
+from .routing import Router
 from .store import Store
 
 STATIC = Path(__file__).resolve().parent / "static"
@@ -90,6 +91,7 @@ def parse_reply(body):
 
 class Handler(BaseHTTPRequestHandler):
     store = None       # set by make_server
+    router = None      # one Router for the server's lifetime so round-robin advances across requests
     api_token = None
     unsub_secret = None
     server_version = "gtm-engine"
@@ -184,7 +186,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send(HTTPStatus.OK, accounts.rollup(self.store.leads())[:100])
 
     def post_api_leads(self, q):
-        leads, stats = pipeline.process(parse_leads(self._body()), self.store)
+        leads, stats = pipeline.process(parse_leads(self._body()), self.store, router=self.router)
         self._send(HTTPStatus.CREATED, {"stats": stats, "leads": [
             {k: getattr(l, k) for k in ("email", "score", "tier", "owner", "email_status", "blocked")}
             for l in leads]})
@@ -231,7 +233,7 @@ ROUTES.update({(m, path): f"{m}_{path.strip('/').replace('/', '_')}" for m, path
 
 def make_server(store, host="127.0.0.1", port=8000, env=os.environ):
     handler = type("GTMHandler", (Handler,), {
-        "store": store, "api_token": env.get("GTM_API_TOKEN") or None,
+        "store": store, "router": Router(), "api_token": env.get("GTM_API_TOKEN") or None,
         "unsub_secret": env.get("GTM_UNSUB_SECRET") or None})
     return HTTPServer((host, port), handler)
 

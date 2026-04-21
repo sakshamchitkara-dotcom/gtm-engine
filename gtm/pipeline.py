@@ -8,10 +8,13 @@ from .scoring import load_config, score
 from .verify import verify
 
 
-def process(leads, store, cfg=None, start=None, asof=None, team=None):
-    """Runs already-normalized Lead objects through the pipeline. Returns (kept leads, stats)."""
+def process(leads, store, cfg=None, start=None, asof=None, team=None, router=None):
+    """Runs already-normalized Lead objects through the pipeline. Returns (kept leads, stats).
+
+    Pass a long-lived router to keep round-robin/capacity state across calls (the web API does).
+    """
     cfg = cfg or load_config()
-    router = Router(team)
+    router = router or Router(team)
     stats = {}
     leads, stats["person_dupes"] = dedupe(leads)
     kept = []

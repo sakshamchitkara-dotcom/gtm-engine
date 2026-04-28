@@ -23,8 +23,8 @@ function table(el, cols, rows) {
     for (const [, get, num] of cols) {
       const td = tr.insertCell();
       const v = get(row);
-      if (v instanceof Node) td.appendChild(v); else td.textContent = v ?? "";
-      if (num) td.className = "n";
+      if (v instanceof Node) { td.appendChild(v); td.classList.add("bar-cell"); } else td.textContent = v ?? "";
+      if (num) td.classList.add("n");
     }
   }
 }

@@ -37,9 +37,15 @@ function bar(frac) {
   return d;
 }
 
+const LIMIT = 50;
+let byTier = {}, leadsSeq = 0;
+
 async function loadLeads() {
-  const tier = $("tier").value;
-  const rows = await api(`/api/leads?limit=50${tier ? "&tier=" + encodeURIComponent(tier) : ""}`);
+  const tier = $("tier").value, seq = ++leadsSeq;
+  const rows = await api(`/api/leads?limit=${LIMIT}${tier ? "&tier=" + encodeURIComponent(tier) : ""}`);
+  if (seq !== leadsSeq) return; // a newer filter change already won; don't paint stale rows
+  const total = tier ? byTier[tier] || 0 : Object.values(byTier).reduce((a, b) => a + b, 0);
+  $("lead-count").textContent = `showing ${rows.length} of ${total}`;
   table($("leads"), [
     ["Score", (r) => r.score, true], ["Tier", (r) => r.tier], ["Email", (r) => r.email],
     ["Company", (r) => r.company], ["Title", (r) => r.title], ["Owner", (r) => r.owner],
@@ -64,6 +70,7 @@ async function load() {
     const max = Math.max(1, ...rep.funnel.map((f) => f.count));
     table($("funnel"), [["Stage", (f) => f.stage], ["Count", (f) => f.count, true],
       ["Conv", (f) => f.conversion, true], ["", (f) => bar(f.count / max)]], rep.funnel);
+    byTier = rep.by_tier;
     const tiers = Object.entries(rep.by_tier);
     table($("tiers"), [["Tier", (t) => t[0]], ["Leads", (t) => t[1], true],
       ["", (t) => bar(t[1] / Math.max(1, rep.total))]], tiers);

@@ -1,7 +1,9 @@
 import json
+import socket
 import tempfile
 import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -60,7 +62,7 @@ class WebTest(unittest.TestCase):
         rows = json.loads(body)
         self.assertEqual((status, len(rows), rows[0]["tier"]), (200, 2, "A"))
         self.assertNotIn("data", rows[0])
-        self.assertEqual(json.loads(self.call("/api/report")[1])["total"], 10)
+        self.assertEqual(json.loads(self.call("/api/report")[1])["total"], len(self.store.leads()))
         self.assertEqual(json.loads(self.call("/api/forecast")[1])[-1]["owner"], "TOTAL")
         self.assertEqual(self.call("/api/leads?limit=abc")[0], 400)
 
@@ -104,3 +106,21 @@ class WebTest(unittest.TestCase):
                               ctype="application/x-www-form-urlencoded")
         self.assertEqual(status, 200)
         self.assertIn(e, self.store.suppressed())
+
+    def test_slow_client_does_not_block_others(self):
+        # a client that promises a body and never sends it used to wedge the single-threaded server
+        with socket.create_connection(("127.0.0.1", self.srv.server_port)) as slow:
+            slow.sendall(b"POST /api/signals HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\n"
+                         b"Authorization: Bearer t0ken\r\nContent-Length: 100\r\n\r\n")
+            req = Request(self.base + "/api/report", headers={"Authorization": f"Bearer {self.TOKEN}"})
+            with urlopen(req, timeout=3) as r:
+                self.assertEqual(r.status, 200)
+
+    def test_concurrent_posts_are_serialized(self):
+        def post(i):
+            body = {"email": f"cc{i}@cc{i}-co.io", "title": "Manager", "employees": 60,
+                    "industry": "saas", "country": "US", "source": "webinar"}
+            return self.call("/api/leads", body)[0]
+        with ThreadPoolExecutor(8) as pool:
+            self.assertEqual(set(pool.map(post, range(24))), {201})
+        self.assertEqual(sum(1 for r in self.store.leads() if r["email"].startswith("cc")), 24)

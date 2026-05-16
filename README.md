@@ -17,8 +17,8 @@ A small, dependency-free GTM (go-to-market) engineering system in Python:
 | Verify | `gtm/verify.py` | syntax, role-based (`info@`, `sales@`), disposable and typo domains (`gmial.com`) → valid / risky / invalid |
 | Enrich | `gtm/enrich.py` | domain, free-email flag, seniority from title, company size band |
 | Intent | `gtm/intent.py` | signals (pricing_page, demo_page, g2_visit...) with a 7-day half-life → intent points |
-| Score | `gtm/scoring.py` | ICP fit 0–100 + A/B/C/D tier, weights in `config/icp.json`, explainable `reasons` |
-| Route | `gtm/routing.py` | territory + round-robin, account-sticky, per-rep capacity from `config/team.json` |
+| Score | `gtm/scoring.py` | ICP fit 0–100 + A/B/C/D tier, weights in `gtm/config/icp.json`, explainable `reasons` |
+| Route | `gtm/routing.py` | territory + round-robin, account-sticky, per-rep capacity from `gtm/config/team.json` |
 | Comply | `gtm/compliance.py` | suppression list (emails + domains), unsubscribes, GDPR: EU/UK leads need an inbound source |
 | Sequence | `gtm/sequences.py` | per-tier multi-touch cadences (email/LinkedIn/call), weekend-aware |
 | Experiment | `gtm/experiments.py` | hashed A/B opener subjects, two-proportion z-test |
@@ -92,9 +92,11 @@ challenger vs control: z=-1.4 p=0.1614 (not significant)
 
 ## Configuration
 
-- `config/icp.json`: scoring weights, tier cutoffs, penalties.
-- `config/team.json`: AE/SDR pools per region, `capacity` (leads per run) and
+- `gtm/config/icp.json`: scoring weights, tier cutoffs, penalties.
+- `gtm/config/team.json`: AE/SDR pools per region, `capacity` (leads per run) and
   `daily_send_cap` per rep, each with a `default`.
+- `GTM_CONFIG_DIR`: a directory with your own `icp.json` / `team.json`; used by every command
+  (the bundled files live inside the package, so this is how to customize a `pip install .`).
 - SMTP: `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_STARTTLS` (1).
 - Unsubscribe: `GTM_UNSUB_MAILTO`; set `GTM_BASE_URL` + `GTM_UNSUB_SECRET` to add a signed
   one-click link served by `gtm serve` at `/unsubscribe`.

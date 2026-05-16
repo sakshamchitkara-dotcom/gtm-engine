@@ -89,6 +89,16 @@ class GTMTest(unittest.TestCase):
             stages = {r["email"]: r["stage"] for r in store.leads()}
             self.assertEqual(stages["priya@northwind.io"], "meeting")  # upsert keeps funnel stage
 
+    def test_config_dir_override(self):
+        import json, os
+        from unittest import mock
+        from gtm.routing import load_team
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "team.json").write_text(json.dumps({"sdr": {"NA": ["only@x.io"]}}))
+            with mock.patch.dict(os.environ, {"GTM_CONFIG_DIR": d}):
+                self.assertEqual(load_team(), {"sdr": {"NA": ["only@x.io"]}})
+        self.assertIn("maya@acme.io", load_team()["ae"]["NA"])  # bundled default
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,12 +1,11 @@
-"""ICP fit scoring. Weights live in config/icp.json so RevOps can tune without code."""
+"""ICP fit scoring. Weights live in gtm/config/icp.json (or $GTM_CONFIG_DIR) so RevOps can tune without code."""
 import json
-from pathlib import Path
 
-DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "config" / "icp.json"
+from . import config_path
 
 
 def load_config(path=None):
-    with open(path or DEFAULT_CONFIG) as f:
+    with open(path or config_path("icp.json")) as f:
         return json.load(f)
 
 

@@ -121,5 +121,5 @@ The server is single-threaded `http.server`: fine for a team dashboard, put a re
 python3 -m unittest -v
 ```
 
-CI (GitHub Actions) runs the tests on Python 3.10, 3.12 and 3.13 plus an end-to-end
-smoke of the CLI and web server on generated data. Python 3.10+, stdlib only.
+CI (GitHub Actions) runs the tests on Python 3.10-3.13 plus an end-to-end
+smoke of a non-editable install (CLI and web server) on generated data. Python 3.10+, stdlib only.

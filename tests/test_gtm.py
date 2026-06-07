@@ -89,6 +89,18 @@ class GTMTest(unittest.TestCase):
             stages = {r["email"]: r["stage"] for r in store.leads()}
             self.assertEqual(stages["priya@northwind.io"], "meeting")  # upsert keeps funnel stage
 
+    def test_best_lead_decides_account_owner(self):
+        with tempfile.TemporaryDirectory() as d:
+            ic = Lead(email="ic@bigco.io", title="Analyst", employees=5000, industry="saas", country="US",
+                      source="list")
+            vp = Lead(email="vp@bigco.io", title="VP Revenue", employees=5000, industry="saas", country="US",
+                      source="demo_request")
+            leads, _ = pipeline.process([ic, vp], Store(f"{d}/t.db"))  # CSV order: IC first
+            self.assertEqual(vp.tier, "A")
+            self.assertNotEqual(ic.tier, "A")
+            self.assertIn(vp.owner, ("maya@acme.io", "jordan@acme.io"))  # AE pool, not SDR
+            self.assertEqual(ic.owner, vp.owner)
+
     def test_config_dir_override(self):
         import json, os
         from unittest import mock

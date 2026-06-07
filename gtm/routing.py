@@ -6,8 +6,8 @@ when a whole pool is full the lead is parked as "unassigned".
 
 Accounts are sticky: once a company domain has an owner in this run, every
 other routable lead at that domain goes to the same rep (even past cap).
-ponytail: first lead wins, so a tier-B contact seen before the tier-A exec
-decides the owner; sort leads by score first if that matters.
+The first lead routed decides, so pipeline.process routes in score order: the
+tier-A exec, not whichever contact came first in the CSV, picks AE vs SDR.
 """
 import json
 

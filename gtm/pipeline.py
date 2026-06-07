@@ -28,7 +28,11 @@ def process(leads, store, cfg=None, start=None, asof=None, team=None, router=Non
     pts = intent.points(store.signals(), asof)
     for lead in leads:
         lead.intent = intent.for_lead(enrich(lead), pts)
-        router.assign(score(lead, cfg))
+        score(lead, cfg)
+    # best lead first: the first routed lead at a domain claims the account for its pool
+    for lead in sorted(leads, key=lambda l: -l.score):
+        router.assign(lead)
+    for lead in leads:
         lead.blocked = compliance.check(lead, suppressed)
         if lead.blocked:
             store.clear_touches(lead.email)

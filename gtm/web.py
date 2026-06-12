@@ -185,7 +185,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def get_api_report(self, q):
         rows = self.store.leads()
-        funnel = [{"stage": s, "count": n, "conversion": c} for s, n, c in analytics.funnel(rows)]
+        funnel = [{"stage": s, "count": n, "conversion": c} for s, n, c in analytics.funnel(rows, self.store.peak_stages())]
         return (HTTPStatus.OK, {**analytics.summary(rows), "funnel": funnel})
 
     def get_api_forecast(self, q):

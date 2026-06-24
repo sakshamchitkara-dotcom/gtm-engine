@@ -95,6 +95,8 @@ challenger vs control: z=-1.4 p=0.1614 (not significant)
 - `gtm/config/icp.json`: scoring weights, tier cutoffs, penalties.
 - `gtm/config/team.json`: AE/SDR pools per region, `capacity` (leads per run) and
   `daily_send_cap` per rep, each with a `default`.
+  `territories` maps region -> country codes (pools are keyed by region); countries not listed
+  go to `default_region`.
 - `GTM_CONFIG_DIR`: a directory with your own `icp.json` / `team.json`; used by every command
   (the bundled files live inside the package, so this is how to customize a `pip install .`).
 - SMTP: `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_STARTTLS` (1).

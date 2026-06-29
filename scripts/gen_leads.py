@@ -3,12 +3,17 @@
 
     python3 scripts/gen_leads.py --out data/generated --seed 7 --n 500 --asof 2026-09-25
 
+Also writes outcomes.csv: closed won/lost for ~40% of leads, drawn from a hidden
+model (OUTCOME_WEIGHTS) that deliberately disagrees with config/icp.json in places,
+so `gtm calibrate` has something real to find.
+
 The mess is deliberate: duplicate rows, the same person under two emails, company
 name variants (Inc/LLC/typos), typo/disposable/role/invalid emails, and EU leads
 from purchased lists (GDPR-blocked).
 """
 import argparse
 import csv
+import math
 import random
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -28,6 +33,10 @@ TITLES = ["VP of Revenue Operations", "Head of Sales", "Chief Revenue Officer", 
 SUFFIX_VARIANTS = ["", "", "", " Inc", ", Inc.", " LLC", " Ltd", " GmbH"]
 SIGNALS = {"pricing_page": 3, "demo_page": 1, "docs": 3, "email_click": 4, "email_open": 5,
            "g2_visit": 1, "blog": 3, "case_study": 1, "webinar_attended": 1}
+# hidden truth for outcomes: log-odds of winning a closed deal
+OUTCOME_WEIGHTS = {"base": -1.6, "fintech": 1.4, "healthcare": 1.0, "demo_request": 1.2, "webinar": 0.5,
+                   "exec": 0.9, "mid_market": 0.7, "enterprise": -0.6, "free_email": -1.5}
+EXEC_WORDS = ("vp", "chief", "head", "ceo", "cro", "cto", "founder")
 HEADER = ["Email", "First Name", "Last Name", "Job Title", "Company Name", "# Employees",
           "Industry", "Country", "Lead Source"]
 
@@ -98,6 +107,22 @@ def generate(n=500, seed=7, asof=None):
     return rows, signals
 
 
+def outcomes(rows, seed=7, closed=0.4):
+    """[(email, 'won'|'lost')] for a random ~40% of rows with a usable email."""
+    rng, w, out, seen = random.Random(seed + 1), OUTCOME_WEIGHTS, [], set()
+    for email, _, _, title, _, employees, industry, _, source in rows:
+        if "@" not in email or " " in email or email in seen or rng.random() > closed:
+            continue
+        seen.add(email)
+        t = title.lower()
+        logit = (w["base"] + w.get(industry.lower(), 0) + w.get(source, 0)
+                 + w["exec"] * any(k in t.split() or k in t for k in EXEC_WORDS)
+                 + w["mid_market"] * (51 <= employees <= 1000) + w["enterprise"] * (employees > 1000)
+                 + w["free_email"] * any(d in email for d in ("gmail.", "outlook.", "yahoo.")))
+        out.append((email, "won" if rng.random() < 1 / (1 + math.exp(-logit)) else "lost"))
+    return out
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--out", default="data/generated")
@@ -112,7 +137,11 @@ def main():
         csv.writer(f).writerows([HEADER] + rows)
     with open(out / "signals.csv", "w", newline="") as f:
         csv.writer(f).writerows([["email", "signal", "at"]] + signals)
-    print(f"wrote {len(rows)} leads and {len(signals)} signals to {out}/")
+    closed = outcomes(rows, a.seed)
+    with open(out / "outcomes.csv", "w", newline="") as f:
+        csv.writer(f).writerows([["email", "stage"]] + closed)
+    won = sum(s == "won" for _, s in closed)
+    print(f"wrote {len(rows)} leads, {len(signals)} signals and {len(closed)} outcomes ({won} won) to {out}/")
 
 
 if __name__ == "__main__":

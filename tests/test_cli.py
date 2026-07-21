@@ -6,6 +6,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 from gtm import cli
+from gtm.store import Store
 from tests.test_gtm import SAMPLE
 
 
@@ -45,6 +46,14 @@ class CLITest(unittest.TestCase):
         self.assertIn("sara@tinyapps.dev", self.gtm("suppress", "--list"))
         self.gtm("suppress", "spam.io")
         self.assertIn("spam.io", self.gtm("suppress"))
+
+    def test_outcomes_bulk_stage(self):
+        p = Path(self.tmp.name, "o.csv")
+        p.write_text("email,stage\nPriya@Northwind.io,won\nghost@x.io,lost\nsara@tinyapps.dev,maybe\n")
+        self.assertEqual(self.gtm("outcomes", str(p)).strip(), "updated=1 unknown_lead=1 bad_stage=1")
+        store = Store(self.db)
+        self.assertEqual(store.lead("priya@northwind.io")["stage"], "won")
+        store.db.close()
 
     def test_verify_and_export(self):
         out = self.gtm("verify", "a@gmial.com", "info@acme.io", "bad")

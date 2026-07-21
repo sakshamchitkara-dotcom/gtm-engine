@@ -1,4 +1,5 @@
 import argparse
+import csv
 import sys
 from datetime import date, datetime
 
@@ -29,6 +30,9 @@ def main(argv=None):
     st = sub.add_parser("stage", help="move a lead through the funnel")
     st.add_argument("email")
     st.add_argument("stage", choices=STAGES)
+
+    oc = sub.add_parser("outcomes", help="bulk stage updates from a CSV (email,stage), e.g. CRM won/lost")
+    oc.add_argument("csv")
 
     sub.add_parser("report", help="funnel + distribution report")
 
@@ -99,6 +103,20 @@ def main(argv=None):
             except KeyError:
                 sys.exit(f"stage: no lead {a.email!r} (import it with `gtm run` first)")
             print(f"{a.email} -> {a.stage}")
+        elif a.cmd == "outcomes":
+            n = dict.fromkeys(("updated", "unknown_lead", "bad_stage"), 0)
+            with open(a.csv, newline="", encoding="utf-8-sig") as f:
+                for row in csv.DictReader(f):
+                    stage = (row.get("stage") or "").strip().lower()
+                    if stage not in STAGES:
+                        n["bad_stage"] += 1
+                        continue
+                    try:
+                        store.set_stage((row.get("email") or "").strip(), stage)
+                        n["updated"] += 1
+                    except KeyError:
+                        n["unknown_lead"] += 1
+            print(" ".join(f"{k}={v}" for k, v in n.items()))
         elif a.cmd == "signals":
             rows, skipped = intent.load_csv(a.csv)
             print(f"signals loaded={store.add_signals(rows)} skipped={skipped} (re-run `gtm run` to rescore)")

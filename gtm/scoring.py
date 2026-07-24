@@ -18,6 +18,7 @@ def score(lead, cfg):
             points += n
             reasons.append(f"{n:+d} {why}")
 
+    add(cfg.get("base", 0), "base")  # intercept; set by `gtm calibrate`, absent in hand-written configs
     add(cfg["industries"].get(lead.industry, 0), f"industry={lead.industry}")
     add(cfg["size_bands"].get(lead.size_band, 0), f"size={lead.size_band}")
     add(cfg["seniority"].get(lead.seniority, 0), f"seniority={lead.seniority}")

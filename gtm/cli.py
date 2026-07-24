@@ -3,8 +3,9 @@ import csv
 import sys
 from datetime import date, datetime
 
-from . import accounts, analytics, compliance, crm, digest, experiments, forecast, intent, outbox, pipeline, replies
+from . import accounts, analytics, calibrate, compliance, crm, digest, experiments, forecast, intent, outbox, pipeline, replies
 from .routing import load_team
+from .scoring import load_config
 from .store import STAGES, Store
 from .verify import verify
 
@@ -33,6 +34,11 @@ def main(argv=None):
 
     oc = sub.add_parser("outcomes", help="bulk stage updates from a CSV (email,stage), e.g. CRM won/lost")
     oc.add_argument("csv")
+
+    cb = sub.add_parser("calibrate", help="fit icp.json weights to closed won/lost history")
+    cb.add_argument("--config", help="icp config to start from (default bundled)")
+    cb.add_argument("--min-support", type=int, default=5, help="closed leads a feature needs to be refit")
+    cb.add_argument("--write", metavar="PATH", help="write the calibrated icp.json here")
 
     sub.add_parser("report", help="funnel + distribution report")
 
@@ -117,6 +123,15 @@ def main(argv=None):
                     except KeyError:
                         n["unknown_lead"] += 1
             print(" ".join(f"{k}={v}" for k, v in n.items()))
+        elif a.cmd == "calibrate":
+            try:
+                res = calibrate.calibrate(store.leads(), load_config(a.config), a.min_support)
+            except ValueError as e:
+                sys.exit(f"calibrate: {e}")
+            print(calibrate.render(res))
+            if a.write:
+                calibrate.write(res, a.write)
+                print(f"\nwrote {a.write}; apply with: gtm run CSV --config {a.write}")
         elif a.cmd == "signals":
             rows, skipped = intent.load_csv(a.csv)
             print(f"signals loaded={store.add_signals(rows)} skipped={skipped} (re-run `gtm run` to rescore)")

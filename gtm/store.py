@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS signals (
 CREATE TABLE IF NOT EXISTS sends (
     email TEXT, step INTEGER, owner TEXT, sent_on TEXT, PRIMARY KEY (email, step)
 );
+CREATE TABLE IF NOT EXISTS notified (
+    email TEXT PRIMARY KEY, at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY, email TEXT, kind TEXT, at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -114,6 +117,13 @@ class Store:
 
     def signals(self):
         return [tuple(r) for r in self.db.execute("SELECT target, signal, at FROM signals")]
+
+    def notified(self):
+        return {r[0] for r in self.db.execute("SELECT email FROM notified")}
+
+    def mark_notified(self, emails):
+        with self.db:
+            self.db.executemany("INSERT OR IGNORE INTO notified (email) VALUES (?)", [(e,) for e in emails])
 
     def record_send(self, email, step, owner, sent_on):
         with self.db:

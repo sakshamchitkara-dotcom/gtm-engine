@@ -7,7 +7,7 @@ from urllib.error import URLError
 from datetime import date, datetime
 
 from . import (accounts, analytics, calibrate, compliance, crm, digest, experiments, forecast, intent, notify,
-               outbox, pipeline, replies)
+               outbox, pipeline, replies, sla)
 from .routing import load_team
 from .scoring import load_config
 from .store import STAGES, Store
@@ -82,6 +82,10 @@ def main(argv=None):
     nt = sub.add_parser("notify", help="Slack alert for new tier-A leads (prints only, unless --send)")
     nt.add_argument("--send", action="store_true", help="post to $SLACK_WEBHOOK_URL and mark leads notified")
     nt.add_argument("--limit", type=int, default=20)
+
+    sl = sub.add_parser("sla", help="time to first touch vs per-tier SLA (team.json sla_hours)")
+    sl.add_argument("--now", type=datetime.fromisoformat, help="evaluate as of this time (UTC; default now)")
+    sl.add_argument("--team", help="team config (default gtm/config/team.json or $GTM_CONFIG_DIR)")
 
     sub.add_parser("forecast", help="weighted pipeline per owner (stage prob x ACV)")
 
@@ -175,6 +179,8 @@ def main(argv=None):
             else:
                 print(body["text"] if sent else json.dumps(body, indent=2))
                 print("-- sent to Slack" if sent else "-- dry run: nothing sent or recorded (use --send)")
+        elif a.cmd == "sla":
+            print(sla.render(sla.report(store, load_team(a.team), a.now)))
         elif a.cmd == "forecast":
             print(forecast.render(store.leads()))
         elif a.cmd == "digest":

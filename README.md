@@ -89,6 +89,7 @@ challenger vs control: z=-1.4 p=0.1614 (not significant)
 | `reply EMAIL TEXT` (`-` for stdin) | classify a reply and apply it |
 | `outbox [--date D] [--dry-run]` | send due emails |
 | `accounts`, `forecast`, `experiment`, `digest` | reports |
+| `sla [--now T]` | time to first touch per rep vs per-tier SLA, plus untouched leads past SLA |
 | `notify [--send] [--limit N]` | Slack alert for new, contactable tier-A leads; prints the payload unless `--send` |
 | `export [--tier] [--format basic\|hubspot\|salesforce]` | CRM CSV to stdout |
 | `serve [--host] [--port]` | web API + dashboard |
@@ -100,6 +101,7 @@ challenger vs control: z=-1.4 p=0.1614 (not significant)
   `daily_send_cap` per rep, each with a `default`.
   `territories` maps region -> country codes (pools are keyed by region); countries not listed
   go to `default_region`.
+  `sla_hours` sets the time-to-first-touch target per tier (A 4h, B 24h, C 72h).
 - `GTM_CONFIG_DIR`: a directory with your own `icp.json` / `team.json`; used by every command
   (the bundled files live inside the package, so this is how to customize a `pip install .`).
 - SMTP: `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_STARTTLS` (1).

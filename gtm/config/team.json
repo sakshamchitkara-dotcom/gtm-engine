@@ -7,5 +7,6 @@
   "territories": {"NA": ["US", "CA", "MX"],
                   "EMEA": ["GB", "DE", "FR", "NL", "ES", "IT", "SE", "IE", "AE", "ZA"],
                   "APAC": ["IN", "AU", "SG", "JP", "NZ"]},
-  "default_region": "NA"
+  "default_region": "NA",
+  "sla_hours": {"A": 4, "B": 24, "C": 72}
 }

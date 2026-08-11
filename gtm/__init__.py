@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+__version__ = "0.3.0"
+
 
 def config_path(name):
     """Bundled config (gtm/config/<name>), or $GTM_CONFIG_DIR/<name> when set."""

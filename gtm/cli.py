@@ -201,7 +201,8 @@ def main(argv=None):
             print(accounts.render(accounts.rollup(store.leads()), a.limit))
         elif a.cmd == "export":
             crm.export(store.leads(a.tier), a.format, sys.stdout)
-
+    except FileNotFoundError as e:  # a CSV or --config/--team path that doesn't exist
+        sys.exit(f"{a.cmd}: no such file: {e.filename}")
     finally:
         store.db.close()
 

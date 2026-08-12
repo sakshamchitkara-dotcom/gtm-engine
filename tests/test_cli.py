@@ -47,6 +47,18 @@ class CLITest(unittest.TestCase):
         self.gtm("suppress", "spam.io")
         self.assertIn("spam.io", self.gtm("suppress"))
 
+    def test_today_hides_sent_touches_and_closed_leads(self):
+        before = self.gtm("today", "--date", "2026-12-31")
+        self.assertIn("priya@northwind.io", before)
+        self.gtm("stage", "priya@northwind.io", "meeting")
+        store = Store(self.db)
+        other = next(l.split()[2] for l in before.splitlines() if "priya" not in l and " email " in l)
+        store.record_send(other, 1, "x", "2026-09-28")
+        store.db.close()
+        after = self.gtm("today", "--date", "2026-12-31")
+        self.assertNotIn("priya@northwind.io", after)
+        self.assertEqual(sum(other in l for l in after.splitlines()), sum(other in l for l in before.splitlines()) - 1)
+
     def test_outcomes_bulk_stage(self):
         p = Path(self.tmp.name, "o.csv")
         p.write_text("email,stage\nPriya@Northwind.io,won\nghost@x.io,lost\nsara@tinyapps.dev,maybe\n")

@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS events (
 """
 
 STAGES = ["new", "contacted", "replied", "meeting", "opportunity", "won", "lost"]
+SENDABLE_STAGES = ("new", "contacted")  # anything later means a human is on it
 
 
 class Store:
@@ -103,6 +104,14 @@ class Store:
     def touches_due(self, on_date):
         return [dict(r) for r in self.db.execute(
             "SELECT * FROM touches WHERE date<=? ORDER BY date, email", (on_date,))]
+
+    def open_touches(self, on_date):
+        """Due touches still worth doing: not yet sent, and the lead is still new/contacted."""
+        return [dict(r) for r in self.db.execute(
+            f"""SELECT t.* FROM touches t JOIN leads l ON l.email = t.email
+                LEFT JOIN sends s ON s.email = t.email AND s.step = t.step
+                WHERE t.date <= ? AND s.email IS NULL AND l.stage IN {SENDABLE_STAGES}
+                ORDER BY t.date, t.email""", (on_date,))]
 
     def suppress(self, value, reason=""):
         """value is an email or a bare domain."""

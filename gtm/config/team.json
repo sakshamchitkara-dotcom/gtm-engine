@@ -8,5 +8,8 @@
                   "EMEA": ["GB", "DE", "FR", "NL", "ES", "IT", "SE", "IE", "AE", "ZA"],
                   "APAC": ["IN", "AU", "SG", "JP", "NZ"]},
   "default_region": "NA",
-  "sla_hours": {"A": 4, "B": 24, "C": 72}
+  "sla_hours": {"A": 4, "B": 24, "C": 72},
+  "business_hours": {"start": 9, "end": 18, "days": [0, 1, 2, 3, 4]},
+  "timezones": {"default": "America/New_York", "lena@acme.io": "Europe/Berlin", "noah@acme.io": "Europe/London",
+                "ella@acme.io": "Europe/London", "arjun@acme.io": "Asia/Kolkata", "kai@acme.io": "Asia/Kolkata"}
 }

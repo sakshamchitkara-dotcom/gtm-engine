@@ -88,6 +88,8 @@ def main(argv=None):
     sl = sub.add_parser("sla", help="time to first touch vs per-tier SLA (team.json sla_hours)")
     sl.add_argument("--now", type=datetime.fromisoformat, help="evaluate as of this time (UTC; default now)")
     sl.add_argument("--team", help="team config (default gtm/config/team.json or $GTM_CONFIG_DIR)")
+    sl.add_argument("--backfill", action="store_true",
+                    help="estimate a start time for leads imported before 0.3.0 so they are tracked")
 
     sub.add_parser("forecast", help="weighted pipeline per owner (stage prob x ACV)")
 
@@ -182,6 +184,8 @@ def main(argv=None):
                 print(body["text"] if sent else json.dumps(body, indent=2))
                 print("-- sent to Slack" if sent else "-- dry run: nothing sent or recorded (use --send)")
         elif a.cmd == "sla":
+            if a.backfill:
+                print(f"backfilled created events for {store.backfill_created()} leads (estimated)\n")
             print(sla.render(sla.report(store, load_team(a.team), a.now)))
         elif a.cmd == "forecast":
             print(forecast.render(store.leads()))

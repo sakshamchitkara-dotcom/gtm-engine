@@ -56,6 +56,22 @@ class SLATest(unittest.TestCase):
         self.assertEqual({b["email"]: b["age_h"] for b in rep["breaches"]}, {"ny@x.io": 5.0})
         self.assertIn("business hours 9-18h", sla.render(rep))
 
+    def test_backfill_estimates_created_for_old_leads(self):
+        with tempfile.TemporaryDirectory() as d:
+            store = Store(f"{d}/t.db")
+            with store.db:  # two 0.2-era leads: no created event; one was contacted before its row was updated
+                store.db.executemany("INSERT INTO leads (email, data, score, tier, owner, stage, updated_at) "
+                                     "VALUES (?, '{}', 90, 'A', 'sam@acme.io', ?, '2026-09-20 12:00:00')",
+                                     [("a@x.io", "contacted"), ("b@x.io", "new")])
+                store.db.execute("INSERT INTO events (email, kind, at) VALUES ('a@x.io','contacted','2026-09-18 10:00:00')")
+            store.upsert_leads([Lead(email="c@x.io", tier="A", owner="sam@acme.io")])  # already tracked
+            self.assertEqual(sla.report(store, {"sla_hours": {"A": 4}})["untracked"], 2)
+            self.assertEqual(store.backfill_created(), 2)
+            self.assertEqual(store.backfill_created(), 0)  # idempotent
+            created = store.first_event(("created",))
+            store.db.close()
+        self.assertEqual((created["a@x.io"], created["b@x.io"]), ("2026-09-18 10:00:00", "2026-09-20 12:00:00"))
+
 
 if __name__ == "__main__":
     unittest.main()

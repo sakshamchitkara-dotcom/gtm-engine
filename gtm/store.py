@@ -91,6 +91,19 @@ class Store:
         q = f"SELECT email, MIN(at) FROM events WHERE kind IN ({','.join('?' * len(kinds))}) GROUP BY email"
         return dict(self.db.execute(q, kinds).fetchall())
 
+    def backfill_created(self):
+        """Give leads imported before 0.3.0 a 'created' event at the earliest time we know of:
+        their first stage event or the lead row's updated_at. An estimate (updated_at moves on
+        re-import), so it is opt-in via `gtm sla --backfill`. Returns how many were added."""
+        with self.db:
+            return self.db.execute(
+                """INSERT INTO events (email, kind, at)
+                   SELECT l.email, 'created', MIN(COALESCE(e.first_at, l.updated_at), l.updated_at)
+                   FROM leads l LEFT JOIN (SELECT email, MIN(at) AS first_at FROM events GROUP BY email) e
+                     ON e.email = l.email
+                   WHERE NOT EXISTS (SELECT 1 FROM events c WHERE c.email = l.email AND c.kind = 'created')"""
+            ).rowcount
+
     def add_event(self, email, kind):
         with self.db:
             self.db.execute("INSERT INTO events (email, kind) VALUES (?,?)", (email.lower(), kind))

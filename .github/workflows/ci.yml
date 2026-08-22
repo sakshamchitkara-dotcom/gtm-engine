@@ -41,6 +41,10 @@ jobs:
           test "$(find /tmp/outbox -name '*.eml' | wc -l)" -gt 0
           gtm --db /tmp/ci.db notify --limit 3 | grep -q "dry run"
           gtm --db /tmp/ci.db sla --now 2030-01-01T00:00:00 | grep -q "past SLA"
+          gtm --db /tmp/ci.db sla --backfill | grep -q "backfilled created events for 0 leads"
+          test -z "$(gtm --db /tmp/ci.db today --date 2020-01-01)"
+          if gtm --db /tmp/ci.db run /tmp/missing.csv 2> /tmp/err; then exit 1; fi
+          grep -q "no such file: /tmp/missing.csv" /tmp/err
           gtm --db /tmp/ci.db outcomes /tmp/gen/outcomes.csv
           gtm --db /tmp/ci.db calibrate --write /tmp/icp.cal.json | head -3
           gtm --db /tmp/ci2.db run /tmp/gen/leads.csv --config /tmp/icp.cal.json

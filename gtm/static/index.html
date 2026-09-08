@@ -26,6 +26,8 @@
   th { color: var(--muted); font-weight: 500; }
   td.n, th.n { text-align: right; }
   td.bar-cell { width: 45%; }
+  /* block reasons are sentences; wrap them instead of widening the whole leads table */
+  #leads td:last-child { white-space: normal; min-width: 14em; }
   .bar { height: 8px; background: var(--accent); border-radius: 4px; }
   select, input, button { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
   /* the filter sits inside an h2; don't let it inherit the heading's bold/uppercase look */

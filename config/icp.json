@@ -1,0 +1,10 @@
+{
+  "industries": {"saas": 25, "fintech": 20, "software": 20, "ecommerce": 10, "healthcare": 5},
+  "size_bands": {"mid": 25, "upper_mid": 25, "enterprise": 15, "small": 10, "micro": 0},
+  "seniority": {"c_level": 25, "vp": 25, "director": 20, "manager": 10, "ic": 0},
+  "countries": {"US": 10, "CA": 8, "GB": 8, "DE": 6, "IN": 5, "AU": 5},
+  "title_keywords": {"revenue": 10, "sales": 8, "growth": 8, "marketing": 5, "revops": 12, "operations": 5},
+  "sources": {"demo_request": 20, "webinar": 8, "content": 4, "list": 0},
+  "penalties": {"free_email": -30},
+  "tiers": {"A": 80, "B": 55, "C": 30}
+}

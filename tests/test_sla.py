@@ -42,6 +42,23 @@ class SLATest(unittest.TestCase):
         # created and touched overnight: zero working hours elapsed
         self.assertEqual(sla.business_hours(datetime(2026, 9, 29, 23), datetime(2026, 9, 30, 12), ny, bh), 0)
 
+    def test_holidays_are_skipped_per_zone(self):
+        ny = ZoneInfo("America/New_York")
+        # Wed 16:00 -> Fri 10:00 EST with Thanksgiving off: 2h Wed + 1h Fri
+        bh = {"start": 9, "end": 18, "holidays": ["2026-11-26"]}
+        a, b = datetime(2026, 11, 25, 21), datetime(2026, 11, 27, 15)
+        self.assertAlmostEqual(sla.business_hours(a, b, ny, bh, {datetime(2026, 11, 26).date()}), 3)
+        # dict form: rep email beats zone beats default
+        team = {"business_hours": {**bh, "holidays": {"default": ["2026-11-26"], "Europe/Berlin": [],
+                                                      "kai@acme.io": ["2026-11-25", "2026-11-26"]}},
+                "timezones": {"default": "America/New_York", "lena@acme.io": "Europe/Berlin",
+                              "kai@acme.io": "America/New_York"}}
+        clock = sla._clock(team)
+        self.assertAlmostEqual(clock("sam@acme.io", a, b), 3)
+        self.assertAlmostEqual(clock("kai@acme.io", a, b), 1)
+        self.assertAlmostEqual(clock("lena@acme.io", a, b), 9 + 7)  # Wed 22:00 -> Fri 16:00 Berlin, no holiday
+        self.assertAlmostEqual(sla._clock({"business_hours": bh, "timezones": {"default": "America/New_York"}})("x", a, b), 3)
+
     def test_report_uses_each_reps_zone(self):
         team = {"sla_hours": {"A": 4}, "business_hours": {"start": 9, "end": 18},
                 "timezones": {"default": "America/New_York", "lena@acme.io": "Europe/Berlin"}}

@@ -186,7 +186,10 @@ def main(argv=None):
         elif a.cmd == "sla":
             if a.backfill:
                 print(f"backfilled created events for {store.backfill_created()} leads (estimated)\n")
-            print(sla.render(sla.report(store, load_team(a.team), a.now)))
+            try:
+                print(sla.render(sla.report(store, load_team(a.team), a.now)))
+            except ValueError as e:  # a malformed business_hours holiday date
+                sys.exit(f"sla: bad team.json business_hours: {e}")
         elif a.cmd == "forecast":
             print(forecast.render(store.leads()))
         elif a.cmd == "digest":

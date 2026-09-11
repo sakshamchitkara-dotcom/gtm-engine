@@ -32,6 +32,7 @@ class CLITest(unittest.TestCase):
 
     def test_reports(self):
         self.assertIn("Leads: 10", self.gtm("report"))
+        self.assertIn("win rate", self.gtm("cohorts", "--by", "source"))
         self.assertIn("TOTAL", self.gtm("forecast"))
         self.assertIn("missing", self.gtm("accounts"))
         self.assertIn("challenger vs control", self.gtm("experiment"))

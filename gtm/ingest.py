@@ -50,12 +50,46 @@ def normalize(row):
     )
 
 
-def load_csv(path):
-    """Returns (leads, stats). Duplicate emails keep the first occurrence."""
+def parse_mapping(pairs):
+    """["Contact Email=email", ...] -> {"contact email": "email"}; raises ValueError."""
+    mapping = {}
+    for pair in pairs or ():
+        header, sep, field = pair.rpartition("=")
+        field = field.strip().lower()
+        if not sep or not header.strip():
+            raise ValueError(f"expected HEADER=FIELD, got {pair!r}")
+        if field not in ALIASES:
+            raise ValueError(f"unknown field {field!r} in {pair!r}; fields: {', '.join(ALIASES)}")
+        mapping[header.strip().lower()] = field
+    return mapping
+
+
+def _remap(row, mapping):
+    """Mapped columns replace whatever the aliases would have picked for their field."""
+    targets = set(mapping.values())
+    out = {k: v for k, v in row.items() if k and not any(k.strip().lower() in ALIASES[t] for t in targets)}
+    for k, v in row.items():
+        if k and k.strip().lower() in mapping:
+            out[mapping[k.strip().lower()]] = v
+    return out
+
+
+def load_csv(path, mapping=None):
+    """Returns (leads, stats). Duplicate emails keep the first occurrence.
+    mapping: {csv header (lowercase): lead field} for columns the aliases don't know."""
     leads, seen = [], set()
     stats = {"rows": 0, "invalid": 0, "duplicates": 0}
     with open(path, newline="", encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
+        reader = csv.DictReader(f)
+        headers = {h.strip().lower() for h in reader.fieldnames or () if h}
+        if missing := sorted(set(mapping or ()) - headers):
+            raise ValueError(f"--map columns not in {path}: {', '.join(missing)}")
+        if "email" not in (mapping or {}).values() and not headers & set(ALIASES["email"]):
+            raise ValueError(f"no email column in {path} (headers: {', '.join(reader.fieldnames or [])});"
+                             " name it with --map 'HEADER=email'")
+        for row in reader:
+            if mapping:
+                row = _remap(row, mapping)
             stats["rows"] += 1
             lead = normalize(row)
             if lead is None:

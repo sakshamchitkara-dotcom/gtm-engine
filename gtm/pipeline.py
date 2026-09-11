@@ -46,7 +46,7 @@ def process(leads, store, cfg=None, start=None, asof=None, team=None, router=Non
     return leads, stats
 
 
-def run(csv_path, store, config_path=None, start=None, asof=None, team=None):
-    leads, stats = load_csv(csv_path)
+def run(csv_path, store, config_path=None, start=None, asof=None, team=None, mapping=None):
+    leads, stats = load_csv(csv_path, mapping)
     leads, more = process(leads, store, load_config(config_path), start, asof, team)
     return leads, {**stats, **more}

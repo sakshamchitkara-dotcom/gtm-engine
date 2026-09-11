@@ -130,7 +130,7 @@ The in-sample AUC flatters the model. Out of sample (a different-seed 900-lead f
 
 | Command | Does |
 |---|---|
-| `run CSV [--start D] [--asof T]` | full pipeline; re-runs are idempotent and keep funnel stage |
+| `run CSV [--start D] [--asof T] [--map HEADER=FIELD]` | full pipeline; re-runs are idempotent and keep funnel stage. Common export headers are recognized; `--map 'Contact Work Email=email'` (repeatable) names any other column, and wins over the built-in aliases |
 | `leads`, `today`, `stage EMAIL STAGE`, `report` | list, unsent due touches for leads still new/contacted, move a lead, funnel report |
 | `outcomes CSV` | bulk stage updates (`email,stage`), e.g. closed won/lost exported from the CRM |
 | `calibrate [--write PATH]` | fit icp.json weights to won/lost history (logistic regression), keep tier sizes |

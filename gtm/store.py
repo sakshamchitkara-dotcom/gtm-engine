@@ -1,0 +1,61 @@
+"""SQLite persistence. One file, no server. Upserts on email."""
+import json
+import sqlite3
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS leads (
+    email TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    score INTEGER, tier TEXT, owner TEXT, stage TEXT,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS touches (
+    email TEXT, step INTEGER, date TEXT, channel TEXT, subject TEXT, body TEXT,
+    PRIMARY KEY (email, step)
+);
+CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY, email TEXT, kind TEXT, at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+STAGES = ["new", "contacted", "replied", "meeting", "opportunity", "won", "lost"]
+
+
+class Store:
+    def __init__(self, path="gtm.db"):
+        self.db = sqlite3.connect(path)
+        self.db.row_factory = sqlite3.Row
+        self.db.executescript(SCHEMA)
+
+    def upsert_leads(self, leads):
+        with self.db:
+            self.db.executemany(
+                """INSERT INTO leads (email, data, score, tier, owner, stage) VALUES (?,?,?,?,?,?)
+                   ON CONFLICT(email) DO UPDATE SET data=excluded.data, score=excluded.score,
+                   tier=excluded.tier, owner=excluded.owner, updated_at=CURRENT_TIMESTAMP""",
+                [(l.email, json.dumps(l.to_dict()), l.score, l.tier, l.owner, l.stage) for l in leads],
+            )
+
+    def save_touches(self, touches):
+        with self.db:
+            self.db.executemany(
+                "INSERT OR REPLACE INTO touches VALUES (:email,:step,:date,:channel,:subject,:body)", touches)
+
+    def set_stage(self, email, stage):
+        if stage not in STAGES:
+            raise ValueError(f"stage must be one of {STAGES}")
+        with self.db:
+            cur = self.db.execute("UPDATE leads SET stage=? WHERE email=?", (stage, email.lower()))
+            if cur.rowcount == 0:
+                raise KeyError(email)
+            self.db.execute("INSERT INTO events (email, kind) VALUES (?,?)", (email.lower(), stage))
+
+    def leads(self, tier=None):
+        q, args = "SELECT * FROM leads", ()
+        if tier:
+            q, args = q + " WHERE tier=?", (tier,)
+        return [dict(r) for r in self.db.execute(q + " ORDER BY score DESC", args)]
+
+    def touches_due(self, on_date):
+        return [dict(r) for r in self.db.execute(
+            "SELECT * FROM touches WHERE date<=? ORDER BY date, email", (on_date,))]

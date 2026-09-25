@@ -1,9 +1,8 @@
 import argparse
-import csv
 import sys
 from datetime import date, datetime
 
-from . import accounts, analytics, compliance, digest, experiments, forecast, intent, outbox, pipeline, replies
+from . import accounts, analytics, compliance, crm, digest, experiments, forecast, intent, outbox, pipeline, replies
 from .routing import load_team
 from .store import STAGES, Store
 from .verify import verify
@@ -41,6 +40,7 @@ def main(argv=None):
 
     ex = sub.add_parser("export", help="CRM-ready CSV to stdout")
     ex.add_argument("--tier")
+    ex.add_argument("--format", choices=sorted(crm.MAPPINGS), default="basic")
 
     sg = sub.add_parser("signals", help="load intent signals CSV (email,signal,at)")
     sg.add_argument("csv")
@@ -125,10 +125,7 @@ def main(argv=None):
     elif a.cmd == "accounts":
         print(accounts.render(accounts.rollup(store.leads()), a.limit))
     elif a.cmd == "export":
-        w = csv.writer(sys.stdout)
-        w.writerow(["email", "score", "tier", "owner", "stage"])
-        for row in store.leads(a.tier):
-            w.writerow([row["email"], row["score"], row["tier"], row["owner"], row["stage"]])
+        crm.export(store.leads(a.tier), a.format, sys.stdout)
 
 
 if __name__ == "__main__":

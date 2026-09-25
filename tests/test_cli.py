@@ -1,9 +1,12 @@
 """Drives gtm.cli.main() the way a user does, on the sample CSV."""
 import io
+import os
+import socket
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 from gtm import cli
 from gtm.store import Store
@@ -102,3 +105,55 @@ class CLITest(unittest.TestCase):
         self.assertTrue(paths and all(Path(p).exists() for p in paths))
         owner = Path(paths[0]).stem
         self.assertIn(f"# Daily digest: {owner}", self.gtm("digest", "--date", "2026-09-28", "--rep", owner))
+
+    def test_signals_and_unsubscribe(self):
+        p = Path(self.tmp.name, "s.csv")
+        p.write_text("email,signal,at\npriya@northwind.io,pricing_page,2026-09-24T10:00:00\nbad,x,y\n")
+        self.assertEqual(self.gtm("signals", str(p)).split()[:3], ["signals", "loaded=1", "skipped=1"])
+        self.assertEqual(self.gtm("unsubscribe", "Priya@Northwind.io").strip(), "Priya@Northwind.io unsubscribed")
+        self.assertNotIn("priya@northwind.io", self.gtm("today", "--date", "2026-12-31"))
+        self.assertIn("priya@northwind.io", self.gtm("suppress", "--list"))
+
+    def test_outbox_without_smtp_exits_with_hint(self):
+        with mock.patch.dict(os.environ, {"SMTP_HOST": ""}), self.assertRaises(SystemExit) as e:
+            self.gtm("outbox", "--date", "2026-09-28")
+        self.assertIn("SMTP_HOST not set", str(e.exception))
+
+    def test_notify_dry_run_and_send_errors(self):
+        out = self.gtm("notify", "--limit", "1")
+        self.assertIn("new tier-A lead", out)
+        self.assertIn("dry run", out)
+        with mock.patch.dict(os.environ, {"SLACK_WEBHOOK_URL": ""}), self.assertRaises(SystemExit) as e:
+            self.gtm("notify", "--send")
+        self.assertIn("SLACK_WEBHOOK_URL not set", str(e.exception))
+        with socket.socket() as s:  # a port nothing listens on: connection refused
+            s.bind(("127.0.0.1", 0))
+            url = f"http://127.0.0.1:{s.getsockname()[1]}/hook"
+        with mock.patch.dict(os.environ, {"SLACK_WEBHOOK_URL": url}), self.assertRaises(SystemExit) as e:
+            self.gtm("notify", "--send")
+        self.assertIn("webhook failed", str(e.exception))
+        self.assertIn("dry run", self.gtm("notify", "--limit", "1"))  # a failed send marks nothing notified
+
+    def test_sla_backfill_and_bad_holiday(self):
+        store = Store(self.db)
+        with store.db:
+            store.db.execute("DELETE FROM events WHERE email='priya@northwind.io' AND kind='created'")
+        store.db.close()
+        self.assertIn("1 leads predate SLA tracking", self.gtm("sla"))
+        out = self.gtm("sla", "--backfill")
+        self.assertTrue(out.startswith("backfilled created events for 1 leads"), out)
+        self.assertNotIn("predate", out)
+        team = Path(self.tmp.name, "team.json")
+        team.write_text('{"business_hours": {"holidays": ["26/11/2026"]}}')
+        with self.assertRaises(SystemExit) as e:
+            self.gtm("sla", "--team", str(team))
+        self.assertIn("sla: bad team.json business_hours", str(e.exception))
+
+    def test_serve_exits_when_port_is_taken(self):
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            s.listen()
+            with self.assertRaises(SystemExit) as e:
+                self.gtm("serve", "--port", str(s.getsockname()[1]))
+        self.assertIn("serve: cannot listen on 127.0.0.1", str(e.exception))
+

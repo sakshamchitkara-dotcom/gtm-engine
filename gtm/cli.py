@@ -48,6 +48,9 @@ def main(argv=None):
 
     sub.add_parser("report", help="funnel + distribution report")
 
+    co = sub.add_parser("cohorts", help="conversion by import month and lead source")
+    co.add_argument("--by", choices=("both", "month", "source"), default="both")
+
     v = sub.add_parser("verify", help="check email deliverability (valid/risky/invalid)")
     v.add_argument("emails", nargs="+")
 
@@ -204,6 +207,9 @@ def main(argv=None):
                 print(f"{status:<8} {e}  {why}".rstrip())
         elif a.cmd == "report":
             print(analytics.render(store.leads(), store.peak_stages()))
+        elif a.cmd == "cohorts":
+            rows = analytics.cohorts(store.leads(), store.first_event(("created",)), store.peak_stages(), a.by)
+            print(analytics.render_cohorts(rows))
         elif a.cmd == "accounts":
             print(accounts.render(accounts.rollup(store.leads()), a.limit))
         elif a.cmd == "export":

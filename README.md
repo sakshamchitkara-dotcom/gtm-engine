@@ -99,6 +99,13 @@ maya@acme.io          34   1,290,000     25,800    90,000
 ...
 TOTAL                443  10,461,000    209,220 2,504,000
 
+$ gtm cohorts --by source
+cohort         leads contacted  meeting  won lost win rate
+content          117       36%      11%   13   29      31%
+demo_request      52       46%      29%   15    9      62%
+list             171       36%      13%   23   39      37%
+webinar          103       39%      12%   12   28      30%
+
 $ gtm sla --now "$(date -u -v+30H +%Y-%m-%dT%H:%M:%S)"   # imported Fri 10:17 UTC; as if 30h later
 SLA hours: A=4, B=24, C=72  (business hours 9-18h, rep time zones)
 
@@ -133,6 +140,7 @@ The in-sample AUC flatters the model. Out of sample (a different-seed 900-lead f
 | `reply EMAIL TEXT` (`-` for stdin) | classify a reply and apply it |
 | `outbox [--date D] [--dry-run]` | send due emails |
 | `accounts`, `forecast`, `experiment`, `digest` | reports |
+| `cohorts [--by both\|month\|source]` | per import month and lead source: share contacted, share with a meeting, won, lost, win rate |
 | `sla [--now T] [--backfill]` | time to first touch per rep vs per-tier SLA, plus untouched leads past SLA; `--backfill` estimates start times for leads imported before 0.3.0 |
 | `notify [--send] [--limit N]` | Slack alert for new, contactable tier-A leads; prints the payload unless `--send` |
 | `export [--tier] [--format basic\|hubspot\|salesforce]` | CRM CSV to stdout |

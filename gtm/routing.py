@@ -3,6 +3,11 @@
 Tier A enterprise goes to the AE pool; everything else to SDRs. Team and
 per-rep capacity live in config/team.json. A rep at capacity is skipped;
 when a whole pool is full the lead is parked as "unassigned".
+
+Accounts are sticky: once a company domain has an owner in this run, every
+other routable lead at that domain goes to the same rep (even past cap).
+ponytail: first lead wins, so a tier-B contact seen before the tier-A exec
+decides the owner; sort leads by score first if that matters.
 """
 import json
 from pathlib import Path
@@ -38,6 +43,7 @@ class Router:
                        for reg, reps in self.team.get(role, {}).items()}
         self._next = dict.fromkeys(self._pools, 0)
         self.load = {}
+        self.accounts = {}  # domain -> owner
 
     def _pick(self, key):
         pool = self._pools.get(key) or []
@@ -54,6 +60,13 @@ class Router:
         if lead.tier == "D":
             lead.owner = "nurture"
             return lead
+        domain = "" if lead.is_free_email else lead.domain
+        if domain in self.accounts:
+            lead.owner = self.accounts[domain]
+            self.load[lead.owner] = self.load.get(lead.owner, 0) + 1
+            return lead
         role = "ae" if lead.tier == "A" and lead.size_band in ("upper_mid", "enterprise") else "sdr"
         lead.owner = self._pick((role, region_of(lead.country)))
+        if domain and lead.owner != "unassigned":
+            self.accounts[domain] = lead.owner
         return lead

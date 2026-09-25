@@ -46,6 +46,15 @@ class GTMTest(unittest.TestCase):
         ent = Lead(email="e@x.com", tier="A", size_band="enterprise", country="DE")
         self.assertEqual(r.assign(ent).owner, "lena@acme.io")
 
+    def test_routing_keeps_accounts_together(self):
+        r = Router()
+        mk = lambda e, **kw: Lead(email=e, domain=e.split("@")[1], country="US", **kw)
+        first = r.assign(mk("a@big.io", tier="B")).owner
+        self.assertEqual(r.assign(mk("b@big.io", tier="A", size_band="enterprise")).owner, first)
+        self.assertNotEqual(r.assign(mk("c@other.io", tier="B")).owner, first)
+        free = [r.assign(mk(f"{i}@gmail.com", tier="B", is_free_email=True)).owner for i in range(3)]
+        self.assertEqual(len(set(free)), 3)  # free-email domains are not accounts
+
     def test_routing_respects_capacity(self):
         team = {"sdr": {"NA": ["a@x.io", "b@x.io"]}, "capacity": {"default": 2, "b@x.io": 1}}
         r = Router(team)

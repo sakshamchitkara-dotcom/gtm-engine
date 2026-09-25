@@ -3,5 +3,9 @@
   "sdr": {"NA": ["sam@acme.io", "riley@acme.io", "alex@acme.io"], "EMEA": ["noah@acme.io", "ella@acme.io"],
           "APAC": ["kai@acme.io"]},
   "capacity": {"default": 150, "maya@acme.io": 40, "jordan@acme.io": 40, "lena@acme.io": 40, "arjun@acme.io": 40},
-  "daily_send_cap": {"default": 40, "kai@acme.io": 25}
+  "daily_send_cap": {"default": 40, "kai@acme.io": 25},
+  "territories": {"NA": ["US", "CA", "MX"],
+                  "EMEA": ["GB", "DE", "FR", "NL", "ES", "IT", "SE", "IE", "AE", "ZA"],
+                  "APAC": ["IN", "AU", "SG", "JP", "NZ"]},
+  "default_region": "NA"
 }

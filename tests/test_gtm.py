@@ -7,7 +7,7 @@ from gtm import analytics, pipeline
 from gtm.enrich import enrich, seniority_of, size_band
 from gtm.ingest import load_csv
 from gtm.models import Lead
-from gtm.routing import Router
+from gtm.routing import REGIONS, Router, load_team
 from gtm.scoring import load_config, score
 from gtm.sequences import build
 from gtm.store import Store
@@ -74,6 +74,15 @@ class GTMTest(unittest.TestCase):
         free = [r.assign(mk(f"{i}@gmail.com", tier="B", is_free_email=True)).owner for i in range(3)]
         self.assertEqual(len(set(free)), 3)  # free-email domains are not accounts
 
+    def test_territories_from_team_config(self):
+        team = {"sdr": {"LATAM": ["br@x.io"], "ROW": ["row@x.io"]},
+                "territories": {"LATAM": ["BR", "MX"]}, "default_region": "ROW"}
+        r = Router(team)
+        self.assertEqual(r.assign(Lead(email="a@x.com", tier="B", country="BR")).owner, "br@x.io")
+        self.assertEqual(r.assign(Lead(email="b@y.com", tier="B", country="US")).owner, "row@x.io")
+        # bundled team.json spells out the same territories the code falls back to
+        self.assertEqual({k: set(v) for k, v in load_team()["territories"].items()}, REGIONS)
+
     def test_routing_respects_capacity(self):
         team = {"sdr": {"NA": ["a@x.io", "b@x.io"]}, "capacity": {"default": 2, "b@x.io": 1}}
         r = Router(team)
@@ -136,7 +145,6 @@ class GTMTest(unittest.TestCase):
     def test_config_dir_override(self):
         import json, os
         from unittest import mock
-        from gtm.routing import load_team
         with tempfile.TemporaryDirectory() as d:
             Path(d, "team.json").write_text(json.dumps({"sdr": {"NA": ["only@x.io"]}}))
             with mock.patch.dict(os.environ, {"GTM_CONFIG_DIR": d}):

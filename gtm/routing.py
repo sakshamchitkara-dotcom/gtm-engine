@@ -15,6 +15,7 @@ from . import config_path
 
 ROLES = ("ae", "sdr")
 
+# used when team.json has no "territories"; "default_region" catches unlisted countries
 REGIONS = {
     "NA": {"US", "CA", "MX"},
     "EMEA": {"GB", "DE", "FR", "NL", "ES", "IT", "SE", "IE", "AE", "ZA"},
@@ -32,8 +33,8 @@ def cap_for(team, rep, key="capacity"):
     return caps.get(rep, caps.get("default"))
 
 
-def region_of(country):
-    return next((r for r, cs in REGIONS.items() if country in cs), "NA")
+def region_of(country, territories=None, default="NA"):
+    return next((r for r, cs in (territories or REGIONS).items() if country in cs), default)
 
 
 class Router:
@@ -77,7 +78,8 @@ class Router:
             self.load[lead.owner] = self.load.get(lead.owner, 0) + 1
             return lead
         role = "ae" if lead.tier == "A" and lead.size_band in ("upper_mid", "enterprise") else "sdr"
-        lead.owner = self._pick((role, region_of(lead.country)))
+        lead.owner = self._pick((role, region_of(lead.country, self.team.get("territories"),
+                                                      self.team.get("default_region", "NA"))))
         if domain and lead.owner != "unassigned":
             self.accounts[domain] = lead.owner
         return lead

@@ -39,6 +39,11 @@ jobs:
           gtm --db /tmp/ci.db digest --date 2026-09-28 --out /tmp/digests
           gtm --db /tmp/ci.db outbox --date 2026-09-28 --dry-run --out /tmp/outbox
           test "$(find /tmp/outbox -name '*.eml' | wc -l)" -gt 0
+          gtm --db /tmp/ci.db notify --limit 3 | grep -q "dry run"
+          gtm --db /tmp/ci.db sla --now 2030-01-01T00:00:00 | grep -q "past SLA"
+          gtm --db /tmp/ci.db outcomes /tmp/gen/outcomes.csv
+          gtm --db /tmp/ci.db calibrate --write /tmp/icp.cal.json | head -3
+          gtm --db /tmp/ci2.db run /tmp/gen/leads.csv --config /tmp/icp.cal.json
           gtm --db /tmp/ci.db serve --port 8765 & srv=$!
           for i in $(seq 1 20); do curl -s -o /dev/null localhost:8765/ && break; sleep 0.5; done
           test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8765/api/report)" = 401

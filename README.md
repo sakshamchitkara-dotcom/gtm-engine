@@ -81,6 +81,7 @@ challenger vs control: z=-1.4 p=0.1614 (not significant)
 |---|---|
 | `run CSV [--start D] [--asof T]` | full pipeline; re-runs are idempotent and keep funnel stage |
 | `leads`, `today`, `stage EMAIL STAGE`, `report` | list, due touches, move a lead, funnel report |
+| `outcomes CSV` | bulk stage updates (`email,stage`), e.g. closed won/lost exported from the CRM |
 | `verify EMAIL...` | deliverability check without importing |
 | `signals CSV` | load intent signals (`email,signal,at`; email may be a bare domain) |
 | `suppress [VALUE...] [--list]`, `unsubscribe EMAIL` | do-not-contact list |

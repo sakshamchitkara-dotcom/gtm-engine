@@ -16,8 +16,8 @@ from urllib.parse import urlencode
 
 from . import compliance
 from .routing import cap_for
+from .store import SENDABLE_STAGES
 
-SENDABLE_STAGES = {"new", "contacted"}  # anything later means a human is on it
 
 
 def _safe(name):

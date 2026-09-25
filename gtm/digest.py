@@ -21,9 +21,8 @@ def _table(header, rows):
 def render(store, rep, day, leads=None):
     leads = [r for r in (leads if leads is not None else store.leads()) if r["owner"] == rep]
     by_email = {r["email"]: r for r in leads}
-    sent = store.sent_keys()
     # unsent emails carry over; call/LinkedIn tasks aren't tracked, so only show today's
-    due = [t for t in store.touches_due(day) if t["email"] in by_email and (t["email"], t["step"]) not in sent
+    due = [t for t in store.open_touches(day) if t["email"] in by_email
            and (t["channel"] == "email" or t["date"] == day)]
     overdue = sum(1 for t in due if t["date"] < day)
     replied = [r for r in leads if r["stage"] == "replied"]

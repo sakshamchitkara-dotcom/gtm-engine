@@ -31,7 +31,7 @@ def main(argv=None):
     ls.add_argument("--tier")
     ls.add_argument("--limit", type=int, default=20)
 
-    t = sub.add_parser("today", help="touches due on/before a date")
+    t = sub.add_parser("today", help="unsent touches due on/before a date, for leads still new/contacted")
     t.add_argument("--date", default=date.today().isoformat())
 
     st = sub.add_parser("stage", help="move a lead through the funnel")
@@ -115,7 +115,7 @@ def main(argv=None):
             for row in store.leads(a.tier)[: a.limit]:
                 print(f"{row['score']:>3} {row['tier']}  {row['email']:<32} {row['owner']}")
         elif a.cmd == "today":
-            for x in store.touches_due(a.date):
+            for x in store.open_touches(a.date):
                 print(f"{x['date']} {x['channel']:<8} {x['email']:<32} {x['subject']}")
         elif a.cmd == "stage":
             try:

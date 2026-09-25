@@ -104,5 +104,6 @@ def render(rep, limit=10):
         lines += [f"  {b['age_h']:>6}h > {b['sla_h']}h  {b['tier']}  {b['email']:<32} {b['owner']}"
                   for b in rep["breaches"][:limit]]
     if rep["untracked"]:
-        lines.append(f"\n{rep['untracked']} leads predate SLA tracking (no created event) and are skipped")
+        lines.append(f"\n{rep['untracked']} leads predate SLA tracking (no created event) and are skipped;"
+                     " `gtm sla --backfill` estimates a start time for them")
     return "\n".join(lines)

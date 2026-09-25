@@ -3,7 +3,7 @@ import csv
 import sys
 from datetime import date, datetime
 
-from . import analytics, compliance, intent, pipeline
+from . import accounts, analytics, compliance, intent, pipeline
 from .store import STAGES, Store
 from .verify import verify
 
@@ -34,6 +34,9 @@ def main(argv=None):
 
     v = sub.add_parser("verify", help="check email deliverability (valid/risky/invalid)")
     v.add_argument("emails", nargs="+")
+
+    ac = sub.add_parser("accounts", help="leads rolled up by company domain")
+    ac.add_argument("--limit", type=int, default=20)
 
     ex = sub.add_parser("export", help="CRM-ready CSV to stdout")
     ex.add_argument("--tier")
@@ -83,6 +86,8 @@ def main(argv=None):
             print(f"{status:<8} {e}  {why}".rstrip())
     elif a.cmd == "report":
         print(analytics.render(store.leads()))
+    elif a.cmd == "accounts":
+        print(accounts.render(accounts.rollup(store.leads()), a.limit))
     elif a.cmd == "export":
         w = csv.writer(sys.stdout)
         w.writerow(["email", "score", "tier", "owner", "stage"])

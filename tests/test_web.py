@@ -78,6 +78,16 @@ class WebTest(unittest.TestCase):
         self.assertEqual((status, out["leads"][0]["tier"]), (201, "A"))
         self.assertIsNotNone(self.store.lead("new.vp@web-co.io"))
 
+    def test_body_limits(self):
+        with socket.create_connection(("127.0.0.1", self.srv.server_port)) as s:  # no body needed for a 413
+            s.sendall(f"POST /api/signals HTTP/1.1\r\nHost: x\r\nAuthorization: Bearer {self.TOKEN}\r\n"
+                      f"Content-Length: {web.MAX_BODY + 1}\r\n\r\n".encode())
+            self.assertIn(b" 413 ", s.recv(200))
+        self.assertEqual(self.call("/api/leads", [{"email": f"{i}@x.io"} for i in range(web.MAX_ITEMS + 1)])[0], 400)
+        self.assertEqual(self.call("/api/leads", [])[0], 400)
+        self.assertEqual(self.call("/api/leads", {"email": "a@b.io", "title": "x" * 201})[0], 400)
+        self.assertEqual(len(json.loads(self.call("/api/leads?limit=5000")[1])), len(self.store.leads()[:1000]))
+
     def test_round_robin_advances_across_requests(self):
         owners = set()
         for i in range(3):

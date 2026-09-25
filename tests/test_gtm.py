@@ -21,6 +21,25 @@ class GTMTest(unittest.TestCase):
         self.assertEqual(stats, {"rows": 12, "invalid": 1, "duplicates": 1, "kept": 10})
         self.assertEqual(leads[0].first_name, "Priya")
 
+    def test_ingest_aliases_bom_and_ranges(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d, "hubspot.csv")
+            p.write_text("\ufeffEmail Address,FirstName,Job Title,Organization,Company Size,HQ Country,Lead Source\n"
+                         " Ana@Co.IO ,ana,VP Sales,Co,51-200,us,Demo_Request\n"
+                         "ana@co.io,dup,,,,,\n", encoding="utf-8")
+            leads, stats = load_csv(p)
+        self.assertEqual(stats, {"rows": 2, "invalid": 0, "duplicates": 1, "kept": 1})
+        a = leads[0]
+        self.assertEqual((a.email, a.first_name, a.company, a.employees, a.country, a.source),
+                         ("ana@co.io", "Ana", "Co", 51, "US", "demo_request"))
+
+    def test_sequence_fills_blanks_and_dept(self):
+        lead = Lead(email="x@co.io", title="Growth Marketing Manager", tier="B", owner="sam@acme.io")
+        first = build(lead, date(2026, 9, 28))[0]
+        self.assertIn("Hi there", first["body"])
+        self.assertIn("growth teams at companies like your team", first["body"])
+        self.assertNotIn("$", first["subject"] + first["body"])
+
     def test_enrichment_rules(self):
         self.assertEqual(seniority_of("VP of Revenue Operations"), "vp")
         self.assertEqual(seniority_of("Chief Revenue Officer"), "c_level")

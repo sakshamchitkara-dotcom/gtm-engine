@@ -1,18 +1,18 @@
-"""ingest -> enrich -> score -> route -> sequence, end to end."""
-from . import compliance, intent
+"""dedupe -> verify -> enrich -> score (+intent) -> route -> comply -> sequence -> store."""
+from . import compliance, intent, sequences
 from .dedupe import dedupe
 from .enrich import enrich
 from .ingest import load_csv
 from .routing import Router
 from .scoring import load_config, score
-from . import sequences
 from .verify import verify
 
 
-def run(csv_path, store, config_path=None, start=None, asof=None):
-    cfg = load_config(config_path)
-    router = Router()
-    leads, stats = load_csv(csv_path)
+def process(leads, store, cfg=None, start=None, asof=None, team=None):
+    """Runs already-normalized Lead objects through the pipeline. Returns (kept leads, stats)."""
+    cfg = cfg or load_config()
+    router = Router(team)
+    stats = {}
     leads, stats["person_dupes"] = dedupe(leads)
     kept = []
     for lead in leads:
@@ -24,8 +24,8 @@ def run(csv_path, store, config_path=None, start=None, asof=None):
     suppressed = store.suppressed()
     pts = intent.points(store.signals(), asof)
     for lead in leads:
-        lead.intent = intent.for_lead(lead, pts)
-        router.assign(score(enrich(lead), cfg))
+        lead.intent = intent.for_lead(enrich(lead), pts)
+        router.assign(score(lead, cfg))
         lead.blocked = compliance.check(lead, suppressed)
         if lead.blocked:
             store.clear_touches(lead.email)
@@ -36,3 +36,9 @@ def run(csv_path, store, config_path=None, start=None, asof=None):
     store.save_touches(touches)
     stats["touches"] = len(touches)
     return leads, stats
+
+
+def run(csv_path, store, config_path=None, start=None, asof=None, team=None):
+    leads, stats = load_csv(csv_path)
+    leads, more = process(leads, store, load_config(config_path), start, asof, team)
+    return leads, {**stats, **more}

@@ -1,7 +1,7 @@
 """Assign leads to reps: territory first, then round-robin within the pool.
 
 Tier A enterprise goes to the AE pool; everything else to SDRs. Team and
-per-rep capacity live in config/team.json. A rep at capacity is skipped;
+per-rep capacity live in gtm/config/team.json ($GTM_CONFIG_DIR overrides). A rep at capacity is skipped;
 when a whole pool is full the lead is parked as "unassigned".
 
 Accounts are sticky: once a company domain has an owner in this run, every
@@ -10,9 +10,9 @@ ponytail: first lead wins, so a tier-B contact seen before the tier-A exec
 decides the owner; sort leads by score first if that matters.
 """
 import json
-from pathlib import Path
 
-TEAM_FILE = Path(__file__).resolve().parent.parent / "config" / "team.json"
+from . import config_path
+
 ROLES = ("ae", "sdr")
 
 REGIONS = {
@@ -23,7 +23,7 @@ REGIONS = {
 
 
 def load_team(path=None):
-    with open(path or TEAM_FILE) as f:
+    with open(path or config_path("team.json")) as f:
         return json.load(f)
 
 

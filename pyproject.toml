@@ -17,4 +17,4 @@ gtm = "gtm.cli:main"
 packages = ["gtm"]
 
 [tool.setuptools.package-data]
-gtm = ["static/*"]
+gtm = ["static/*", "config/*.json"]

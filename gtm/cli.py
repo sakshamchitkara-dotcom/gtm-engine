@@ -63,7 +63,7 @@ def main(argv=None):
     ob.add_argument("--date", default=date.today().isoformat())
     ob.add_argument("--dry-run", action="store_true", help="write .eml files instead of sending")
     ob.add_argument("--out", default="outbox", help="dry-run output directory")
-    ob.add_argument("--team", help="team config (default config/team.json)")
+    ob.add_argument("--team", help="team config (default gtm/config/team.json or $GTM_CONFIG_DIR)")
 
     sub.add_parser("forecast", help="weighted pipeline per owner (stage prob x ACV)")
 

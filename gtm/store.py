@@ -42,6 +42,9 @@ class Store:
 
     def upsert_leads(self, leads):
         with self.db:
+            new = [l.email for l in leads if not self.db.execute(
+                "SELECT 1 FROM leads WHERE email=?", (l.email,)).fetchone()]
+            self.db.executemany("INSERT INTO events (email, kind) VALUES (?, 'created')", [(e,) for e in new])
             self.db.executemany(
                 """INSERT INTO leads (email, data, score, tier, owner, stage) VALUES (?,?,?,?,?,?)
                    ON CONFLICT(email) DO UPDATE SET data=excluded.data, score=excluded.score,
@@ -81,6 +84,11 @@ class Store:
             if kind in rank and rank[kind] > rank.get(peaks.get(email), 0):
                 peaks[email] = kind
         return peaks
+
+    def first_event(self, kinds):
+        """{email: earliest 'YYYY-MM-DD HH:MM:SS' UTC} over events of these kinds."""
+        q = f"SELECT email, MIN(at) FROM events WHERE kind IN ({','.join('?' * len(kinds))}) GROUP BY email"
+        return dict(self.db.execute(q, kinds).fetchall())
 
     def add_event(self, email, kind):
         with self.db:

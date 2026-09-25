@@ -3,7 +3,7 @@ import csv
 import sys
 from datetime import date
 
-from . import analytics, pipeline
+from . import analytics, compliance, pipeline
 from .store import STAGES, Store
 from .verify import verify
 
@@ -37,13 +37,22 @@ def main(argv=None):
     ex = sub.add_parser("export", help="CRM-ready CSV to stdout")
     ex.add_argument("--tier")
 
+    su = sub.add_parser("suppress", help="add emails or domains to the do-not-contact list")
+    su.add_argument("values", nargs="*")
+    su.add_argument("--reason", default="manual")
+    su.add_argument("--list", action="store_true", help="print the suppression list")
+
+    un = sub.add_parser("unsubscribe", help="suppress an email, cancel its touches, mark it lost")
+    un.add_argument("email")
+
     a = p.parse_args(argv)
     store = Store(a.db)
 
     if a.cmd == "run":
         leads, stats = pipeline.run(a.csv, store, a.config, a.start)
         print(f"rows={stats['rows']} kept={stats['kept']} invalid={stats['invalid']} "
-              f"dupes={stats['duplicates']}+{stats['person_dupes']} undeliverable={stats['undeliverable']} touches={stats['touches']}")
+              f"dupes={stats['duplicates']}+{stats['person_dupes']} undeliverable={stats['undeliverable']} "
+              f"blocked={stats['blocked']} touches={stats['touches']}")
     elif a.cmd == "leads":
         for row in store.leads(a.tier)[: a.limit]:
             print(f"{row['score']:>3} {row['tier']}  {row['email']:<32} {row['owner']}")
@@ -53,6 +62,14 @@ def main(argv=None):
     elif a.cmd == "stage":
         store.set_stage(a.email, a.stage)
         print(f"{a.email} -> {a.stage}")
+    elif a.cmd == "suppress":
+        for val in a.values:
+            store.suppress(val, a.reason)
+        if a.list or not a.values:
+            print("\n".join(sorted(store.suppressed())))
+    elif a.cmd == "unsubscribe":
+        compliance.unsubscribe(store, a.email)
+        print(f"{a.email} unsubscribed")
     elif a.cmd == "verify":
         for e in a.emails:
             status, why = verify(e)

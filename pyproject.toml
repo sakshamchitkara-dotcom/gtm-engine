@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gtm-engine"
+version = "0.2.0"
+description = "Dependency-free GTM pipeline: ingest, verify, enrich, score, route, sequence, send, report."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+gtm = "gtm.cli:main"
+
+[tool.setuptools]
+packages = ["gtm"]
+
+[tool.setuptools.package-data]
+gtm = ["static/*"]

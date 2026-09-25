@@ -46,6 +46,14 @@ class GTMTest(unittest.TestCase):
         ent = Lead(email="e@x.com", tier="A", size_band="enterprise", country="DE")
         self.assertEqual(r.assign(ent).owner, "lena@acme.io")
 
+    def test_routing_respects_capacity(self):
+        team = {"sdr": {"NA": ["a@x.io", "b@x.io"]}, "capacity": {"default": 2, "b@x.io": 1}}
+        r = Router(team)
+        owners = [r.assign(Lead(email=f"{i}@y.com", tier="B", country="US")).owner for i in range(4)]
+        self.assertEqual(owners, ["a@x.io", "b@x.io", "a@x.io", "unassigned"])
+        self.assertEqual(r.load, {"a@x.io": 2, "b@x.io": 1})
+        self.assertEqual(build(Lead(email="u@y.com", tier="B", owner="unassigned")), [])
+
     def test_sequence_skips_weekends(self):
         lead = Lead(email="a@co.io", first_name="Ana", company="Co", tier="A", owner="sam@acme.io")
         touches = build(lead, date(2026, 9, 4))  # Friday

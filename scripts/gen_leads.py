@@ -42,6 +42,7 @@ HEADER = ["Email", "First Name", "Last Name", "Job Title", "Company Name", "# Em
 
 
 def companies(rng, n):
+    n = min(n, len(PRE) * len(POST))  # only this many unique names exist; asking for more never ends
     seen, out = set(), []
     while len(out) < n:
         a, b = rng.choice(PRE), rng.choice(POST)

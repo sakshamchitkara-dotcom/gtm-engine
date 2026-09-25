@@ -22,6 +22,10 @@ class GenLeadsTest(unittest.TestCase):
         self.assertEqual(len(rows), 500)
         self.assertGreater(len(signals), 100)
 
+    def test_large_n_terminates(self):
+        rows, _ = gen.generate(3000, seed=1, asof=date(2026, 9, 25))  # hung forever above ~918
+        self.assertEqual(len(rows), 3000)
+
     def test_outcomes_follow_hidden_model(self):
         rows, _ = gen.generate(800, seed=3, asof=date(2026, 9, 25))
         closed = gen.outcomes(rows, seed=3)

@@ -237,7 +237,10 @@ def make_server(store, host="127.0.0.1", port=8000, env=os.environ):
 
 
 def serve(db, host, port):
-    srv = make_server(Store(db), host, port)
+    try:
+        srv = make_server(Store(db), host, port)
+    except OSError as e:
+        sys.exit(f"serve: cannot listen on {host}:{port}: {e.strerror or e}")
     auth = "bearer token required" if srv.RequestHandlerClass.api_token else "NO AUTH (set GTM_API_TOKEN)"
     print(f"gtm web on http://{host}:{srv.server_port}  [{auth}]", flush=True)
     try:

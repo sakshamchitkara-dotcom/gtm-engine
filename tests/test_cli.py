@@ -59,6 +59,13 @@ class CLITest(unittest.TestCase):
         self.assertNotIn("priya@northwind.io", after)
         self.assertEqual(sum(other in l for l in after.splitlines()), sum(other in l for l in before.splitlines()) - 1)
 
+    def test_missing_files_exit_cleanly(self):
+        for argv in (["run", "nope.csv"], ["signals", "nope.csv"], ["outcomes", "nope.csv"],
+                     ["sla", "--team", "nope.json"], ["run", str(SAMPLE), "--config", "nope.json"]):
+            with self.assertRaises(SystemExit) as e:
+                self.gtm(*argv)
+            self.assertEqual(str(e.exception), f"{argv[0]}: no such file: nope." + argv[-1].split(".")[-1])
+
     def test_outcomes_bulk_stage(self):
         p = Path(self.tmp.name, "o.csv")
         p.write_text("email,stage\nPriya@Northwind.io,won\nghost@x.io,lost\nsara@tinyapps.dev,maybe\n")

@@ -28,7 +28,7 @@ A small, dependency-free GTM (go-to-market) engineering system in Python:
 | Report | `gtm/analytics.py`, `accounts.py`, `forecast.py`, `digest.py` | funnel, account rollup + committee coverage, weighted pipeline, per-rep daily digest |
 | Calibrate | `gtm/calibrate.py` | logistic regression on won/lost → suggested `icp.json` weights, same tier sizes |
 | Alert | `gtm/notify.py` | Slack incoming-webhook alert for new tier-A leads, dry run by default |
-| SLA | `gtm/sla.py` | time from import to first touch vs per-tier targets, breach list |
+| SLA | `gtm/sla.py` | time from import to first touch vs per-tier targets in business hours per rep time zone, breach list |
 | Export | `gtm/crm.py` | HubSpot / Salesforce import CSVs |
 | Web | `gtm/web.py` | JSON API + dashboard on `http.server`, optional bearer token |
 
@@ -99,11 +99,21 @@ maya@acme.io          34   1,290,000     25,800    90,000
 ...
 TOTAL                443  10,461,000    209,220 2,504,000
 
-$ gtm sla --now "$(date -u -v+30H +%Y-%m-%dT%H:%M:%S)"   # as if 30h after import
+$ gtm sla --now "$(date -u -v+30H +%Y-%m-%dT%H:%M:%S)"   # imported Fri 10:17 UTC; as if 30h later
+SLA hours: A=4, B=24, C=72  (business hours 9-18h, rep time zones)
+
 owner              leads touched median h in SLA breached
-kai@acme.io           64       6      0.0   100%       34
+maya@acme.io          34       2      0.0   100%       15
+jordan@acme.io        27       4      0.0   100%       10
+...
+untouched past SLA (oldest 10 of 51):
+     9.0h > 4h  A  ivan.diaz@northlabs.com          jordan@acme.io
 ...
 ```
+
+30 wall-clock hours after a Friday-morning import is Saturday afternoon, but only Friday 9-18
+counts: New York reps' untouched tier-A leads are 9.0 working hours old, while kai (Kolkata,
+imported at 15:47 local) has no breaches yet.
 
 The in-sample AUC flatters the model. Out of sample (a different-seed 900-lead file with
 325 closed outcomes, scored once with each config) the calibrated weights moved AUC from
@@ -114,7 +124,7 @@ The in-sample AUC flatters the model. Out of sample (a different-seed 900-lead f
 | Command | Does |
 |---|---|
 | `run CSV [--start D] [--asof T]` | full pipeline; re-runs are idempotent and keep funnel stage |
-| `leads`, `today`, `stage EMAIL STAGE`, `report` | list, due touches, move a lead, funnel report |
+| `leads`, `today`, `stage EMAIL STAGE`, `report` | list, unsent due touches for leads still new/contacted, move a lead, funnel report |
 | `outcomes CSV` | bulk stage updates (`email,stage`), e.g. closed won/lost exported from the CRM |
 | `calibrate [--write PATH]` | fit icp.json weights to won/lost history (logistic regression), keep tier sizes |
 | `verify EMAIL...` | deliverability check without importing |
@@ -123,7 +133,7 @@ The in-sample AUC flatters the model. Out of sample (a different-seed 900-lead f
 | `reply EMAIL TEXT` (`-` for stdin) | classify a reply and apply it |
 | `outbox [--date D] [--dry-run]` | send due emails |
 | `accounts`, `forecast`, `experiment`, `digest` | reports |
-| `sla [--now T]` | time to first touch per rep vs per-tier SLA, plus untouched leads past SLA |
+| `sla [--now T] [--backfill]` | time to first touch per rep vs per-tier SLA, plus untouched leads past SLA; `--backfill` estimates start times for leads imported before 0.3.0 |
 | `notify [--send] [--limit N]` | Slack alert for new, contactable tier-A leads; prints the payload unless `--send` |
 | `export [--tier] [--format basic\|hubspot\|salesforce]` | CRM CSV to stdout |
 | `serve [--host] [--port]` | web API + dashboard |
@@ -136,6 +146,9 @@ The in-sample AUC flatters the model. Out of sample (a different-seed 900-lead f
   `territories` maps region -> country codes (pools are keyed by region); countries not listed
   go to `default_region`.
   `sla_hours` sets the time-to-first-touch target per tier (A 4h, B 24h, C 72h).
+  `business_hours` (`start`/`end` hour, `days` with Monday=0) makes the SLA clock count only
+  working hours, in each rep's zone from `timezones` (`default` + per-rep IANA names); remove it
+  for a wall clock.
 - `GTM_CONFIG_DIR`: a directory with your own `icp.json` / `team.json`; used by every command
   (the bundled files live inside the package, so this is how to customize a `pip install .`).
 - SMTP: `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_STARTTLS` (1).
@@ -162,8 +175,8 @@ responses written outside it). Fine for a team dashboard; put a real server in f
 
 - `gtm calibrate` reports in-sample AUC only; with a few hundred closed deals, hold some out
   before trusting small gains. It only reweights keys already in `icp.json`.
-- SLA hours are wall-clock (no business hours or rep time zones). Leads imported before
-  0.3.0 have no `created` event and are reported as untracked.
+- SLA business hours have no holiday calendar. `gtm sla --backfill` start times for pre-0.3.0
+  leads are estimates (first stage event, else the row's last update).
 - Reply classification is regex rules; email verification never probes SMTP/MX.
 - The web API serializes all store work behind one lock.
 

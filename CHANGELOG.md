@@ -2,6 +2,23 @@
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.0] - 2026-09-25
+
+Commits for this release carry real, unmodified timestamps.
+
+### Added
+- SLA business hours: team.json `business_hours` (start/end hour, weekdays) and `timezones`
+  (per rep + default). Time to first touch and breach age count only working hours in the
+  owner's zone (zoneinfo, DST-safe). On in the bundled team.json.
+- `gtm sla --backfill`: estimated `created` events for leads imported before 0.3.0, which
+  were otherwise reported as untracked forever.
+
+### Fixed
+- `gtm today` listed touches already sent and cadence steps for leads in meeting/won/lost;
+  the digest showed the latter too. Both now use `Store.open_touches()`.
+- A missing CSV, `--config` or `--team` file printed a traceback; the CLI now exits with
+  `<cmd>: no such file: <path>`.
+
 ## [0.3.0] - 2026-09-25
 
 Commits for this release carry real, unmodified timestamps.

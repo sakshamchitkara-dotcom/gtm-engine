@@ -81,7 +81,7 @@ async function load() {
     $("status").textContent = `updated ${new Date().toLocaleTimeString()}`;
     $("auth").style.display = "none";
   } catch (e) {
-    $("status").textContent = e.status === 401 ? "API token required" : String(e);
+    $("status").textContent = e.status !== 401 ? String(e) : token ? "API token rejected" : "API token required";
     if (e.status === 401) $("auth").style.display = "flex";
   }
 }

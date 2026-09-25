@@ -1,9 +1,13 @@
 import argparse
 import csv
+import json
+import os
 import sys
+from urllib.error import URLError
 from datetime import date, datetime
 
-from . import accounts, analytics, calibrate, compliance, crm, digest, experiments, forecast, intent, outbox, pipeline, replies
+from . import (accounts, analytics, calibrate, compliance, crm, digest, experiments, forecast, intent, notify,
+               outbox, pipeline, replies)
 from .routing import load_team
 from .scoring import load_config
 from .store import STAGES, Store
@@ -74,6 +78,10 @@ def main(argv=None):
     ob.add_argument("--dry-run", action="store_true", help="write .eml files instead of sending")
     ob.add_argument("--out", default="outbox", help="dry-run output directory")
     ob.add_argument("--team", help="team config (default gtm/config/team.json or $GTM_CONFIG_DIR)")
+
+    nt = sub.add_parser("notify", help="Slack alert for new tier-A leads (prints only, unless --send)")
+    nt.add_argument("--send", action="store_true", help="post to $SLACK_WEBHOOK_URL and mark leads notified")
+    nt.add_argument("--limit", type=int, default=20)
 
     sub.add_parser("forecast", help="weighted pipeline per owner (stage prob x ACV)")
 
@@ -154,6 +162,19 @@ def main(argv=None):
             except (RuntimeError, OSError) as e:  # missing config, SMTP down/auth failed
                 sys.exit(f"outbox: {e}")
             print(" ".join(f"{k}={v}" for k, v in stats.items()) + (f"  (dry run -> {a.out}/{a.date}/)" if a.dry_run else ""))
+        elif a.cmd == "notify":
+            url = os.environ.get("SLACK_WEBHOOK_URL") if a.send else None
+            if a.send and not url:
+                sys.exit("notify: SLACK_WEBHOOK_URL not set (drop --send for a dry run)")
+            try:
+                body, sent = notify.run(store, url, a.limit)
+            except (URLError, OSError) as e:
+                sys.exit(f"notify: webhook failed: {e}")
+            if body is None:
+                print("notify: no new tier-A leads")
+            else:
+                print(body["text"] if sent else json.dumps(body, indent=2))
+                print("-- sent to Slack" if sent else "-- dry run: nothing sent or recorded (use --send)")
         elif a.cmd == "forecast":
             print(forecast.render(store.leads()))
         elif a.cmd == "digest":

@@ -89,6 +89,7 @@ challenger vs control: z=-1.4 p=0.1614 (not significant)
 | `reply EMAIL TEXT` (`-` for stdin) | classify a reply and apply it |
 | `outbox [--date D] [--dry-run]` | send due emails |
 | `accounts`, `forecast`, `experiment`, `digest` | reports |
+| `notify [--send] [--limit N]` | Slack alert for new, contactable tier-A leads; prints the payload unless `--send` |
 | `export [--tier] [--format basic\|hubspot\|salesforce]` | CRM CSV to stdout |
 | `serve [--host] [--port]` | web API + dashboard |
 
@@ -104,6 +105,7 @@ challenger vs control: z=-1.4 p=0.1614 (not significant)
 - SMTP: `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_STARTTLS` (1).
 - Unsubscribe: `GTM_UNSUB_MAILTO`; set `GTM_BASE_URL` + `GTM_UNSUB_SECRET` to add a signed
   one-click link served by `gtm serve` at `/unsubscribe`.
+- Slack: `SLACK_WEBHOOK_URL` (incoming webhook) for `gtm notify --send`.
 - Web: `GTM_API_TOKEN` requires `Authorization: Bearer <token>` on `/api/*`.
 
 ## Web API

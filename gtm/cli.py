@@ -8,6 +8,7 @@ from datetime import date, datetime
 
 from . import (accounts, analytics, calibrate, compliance, crm, digest, experiments, forecast, intent, notify,
                outbox, pipeline, replies, sla)
+from . import __version__
 from .routing import load_team
 from .scoring import load_config
 from .store import STAGES, Store
@@ -17,6 +18,7 @@ from .verify import verify
 def main(argv=None):
     p = argparse.ArgumentParser(prog="gtm", description="GTM engineering pipeline")
     p.add_argument("--db", default="gtm.db")
+    p.add_argument("--version", action="version", version=f"gtm-engine {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("run", help="ingest, enrich, score, route and sequence a CSV")

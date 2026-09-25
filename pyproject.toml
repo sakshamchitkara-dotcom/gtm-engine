@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gtm-engine"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Dependency-free GTM pipeline: ingest, verify, enrich, score, route, sequence, send, report."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -15,6 +15,9 @@ gtm = "gtm.cli:main"
 
 [tool.setuptools]
 packages = ["gtm"]
+
+[tool.setuptools.dynamic]
+version = {attr = "gtm.__version__"}
 
 [tool.setuptools.package-data]
 gtm = ["static/*", "config/*.json"]

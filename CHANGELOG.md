@@ -2,6 +2,41 @@
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] - 2026-09-25
+
+Commits for this release carry real, unmodified timestamps.
+
+### Added
+- `gtm calibrate`: L2 logistic regression (stdlib) on closed won/lost leads; prints current vs
+  model AUC, win rate per tier and per-feature suggested points; `--write` saves an icp.json with
+  a `base` intercept and tier cutoffs that keep each tier's headcount.
+- `gtm outcomes CSV`: bulk stage updates (`email,stage`), e.g. won/lost exported from a CRM.
+- `gtm notify`: Slack incoming-webhook alert for new tier-A leads. Dry run unless `--send`;
+  each lead is announced once; lead data is escaped for Slack mrkdwn.
+- `gtm sla`: time from first import to first touch per rep against `sla_hours` per tier,
+  plus the untouched leads already past SLA. Imports now record a `created` event.
+- `team.json`: `territories` (region -> countries), `default_region`, `sla_hours`.
+- `GTM_CONFIG_DIR` to point every command at your own icp.json / team.json.
+- `scripts/gen_leads.py` writes `outcomes.csv` from a hidden win model.
+- `gtm --version`; tests for the CLI, calibration, notify, SLA, ingest aliases and web limits.
+
+### Changed
+- The web server is threaded; one lock serializes store work, bodies are read and responses
+  written outside it.
+- Config moved to `gtm/config/` and ships as package data.
+- Leads are routed in score order, so the best lead at an account picks its owner (AE vs SDR).
+- CI smoke-tests a non-editable install from outside the checkout, on Python 3.10-3.13.
+
+### Fixed
+- `pip install .` (non-editable) crashed on every run: config was looked up outside the package.
+- Re-running with new leads reassigned existing leads (199 of 443 in a generated re-run);
+  known leads now keep their rep and accounts stay sticky across runs.
+- Funnel counted a lead lost after a meeting as only "contacted"; it now uses stage history.
+- Dashboard tier filter rendered in the heading's bold, could paint stale results after quick
+  changes, and hid the 50-row cap; it now shows "showing N of M".
+- `gtm stage` on an unknown email printed a traceback; the CLI now closes its database.
+- `gen_leads.py --n` above ~918 looped forever.
+
 ## [0.2.0] - 2026-09-25
 
 Commits for this release carry real, unmodified timestamps.

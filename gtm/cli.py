@@ -3,7 +3,8 @@ import csv
 import sys
 from datetime import date, datetime
 
-from . import accounts, analytics, compliance, experiments, intent, pipeline, replies
+from . import accounts, analytics, compliance, experiments, intent, outbox, pipeline, replies
+from .routing import load_team
 from .store import STAGES, Store
 from .verify import verify
 
@@ -58,6 +59,12 @@ def main(argv=None):
 
     sub.add_parser("experiment", help="A/B subject-line results with a z-test")
 
+    ob = sub.add_parser("outbox", help="send due email touches (SMTP_* env) or write .eml files")
+    ob.add_argument("--date", default=date.today().isoformat())
+    ob.add_argument("--dry-run", action="store_true", help="write .eml files instead of sending")
+    ob.add_argument("--out", default="outbox", help="dry-run output directory")
+    ob.add_argument("--team", help="team config (default config/team.json)")
+
     a = p.parse_args(argv)
     store = Store(a.db)
 
@@ -91,6 +98,9 @@ def main(argv=None):
         print(f"{a.email}: {label} -> {note}")
     elif a.cmd == "experiment":
         print(experiments.render(experiments.results(store.leads())))
+    elif a.cmd == "outbox":
+        stats = outbox.send_due(store, a.date, load_team(a.team), a.out if a.dry_run else None)
+        print(" ".join(f"{k}={v}" for k, v in stats.items()) + (f"  (dry run -> {a.out}/{a.date}/)" if a.dry_run else ""))
     elif a.cmd == "verify":
         for e in a.emails:
             status, why = verify(e)

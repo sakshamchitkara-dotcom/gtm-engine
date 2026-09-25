@@ -6,8 +6,8 @@ import sys
 from urllib.error import URLError
 from datetime import date, datetime
 
-from . import (accounts, analytics, calibrate, compliance, crm, digest, experiments, forecast, intent, notify,
-               outbox, pipeline, replies, sla)
+from . import (accounts, analytics, calibrate, compliance, crm, digest, experiments, forecast, ingest, intent,
+               notify, outbox, pipeline, replies, sla)
 from . import __version__
 from .routing import load_team
 from .scoring import load_config
@@ -26,6 +26,8 @@ def main(argv=None):
     r.add_argument("--config")
     r.add_argument("--start", type=date.fromisoformat, help="cadence start date (YYYY-MM-DD)")
     r.add_argument("--asof", type=datetime.fromisoformat, help="intent decay reference time (default now)")
+    r.add_argument("--map", action="append", metavar="HEADER=FIELD",
+                   help="read a CSV column as a lead field, e.g. --map 'Contact Email=email' (repeatable)")
 
     ls = sub.add_parser("leads", help="list scored leads")
     ls.add_argument("--tier")
@@ -112,7 +114,11 @@ def main(argv=None):
     store = Store(a.db)
     try:
         if a.cmd == "run":
-            leads, stats = pipeline.run(a.csv, store, a.config, a.start, a.asof)
+            try:
+                leads, stats = pipeline.run(a.csv, store, a.config, a.start, a.asof,
+                                            mapping=ingest.parse_mapping(a.map))
+            except ValueError as e:
+                sys.exit(f"run: {e}")
             print(f"rows={stats['rows']} kept={stats['kept']} invalid={stats['invalid']} "
                   f"dupes={stats['duplicates']}+{stats['person_dupes']} undeliverable={stats['undeliverable']} "
                   f"blocked={stats['blocked']} touches={stats['touches']}")

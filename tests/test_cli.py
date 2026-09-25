@@ -67,6 +67,15 @@ class CLITest(unittest.TestCase):
                 self.gtm(*argv)
             self.assertEqual(str(e.exception), f"{argv[0]}: no such file: nope." + argv[-1].split(".")[-1])
 
+    def test_run_map_errors_exit_cleanly(self):
+        self.noemail = Path(self.tmp.name, "noemail.csv")
+        self.noemail.write_text("Contact,Company\nana@co.io,Co\n")
+        for m, msg in (("email", "run: expected HEADER=FIELD"), ("x=mail", "run: unknown field 'mail'"),
+                       ("Nope=email", "run: --map columns not in"), ("Company=title", "run: no email column")):
+            with self.assertRaises(SystemExit) as e:
+                self.gtm("run", str(self.noemail if m.startswith("Company") else SAMPLE), "--map", m)
+            self.assertTrue(str(e.exception).startswith(msg), e.exception)
+
     def test_outcomes_bulk_stage(self):
         p = Path(self.tmp.name, "o.csv")
         p.write_text("email,stage\nPriya@Northwind.io,won\nghost@x.io,lost\nsara@tinyapps.dev,maybe\n")

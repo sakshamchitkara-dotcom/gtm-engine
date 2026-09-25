@@ -33,6 +33,24 @@ class GTMTest(unittest.TestCase):
         self.assertEqual((a.email, a.first_name, a.company, a.employees, a.country, a.source),
                          ("ana@co.io", "Ana", "Co", 51, "US", "demo_request"))
 
+    def test_ingest_column_mapping(self):
+        from gtm.ingest import parse_mapping
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d, "clay.csv")  # "Email" is a personal address; the work one is under a custom header
+            p.write_text("Email,Contact Work Email,Org Name,Account\n"
+                         "ana@gmail.com,ana@co.io,Co Inc,ignored\n", encoding="utf-8")
+            m = parse_mapping(["Contact Work Email=email", " org name = Company"])
+            self.assertEqual(m, {"contact work email": "email", "org name": "company"})
+            (a,), _ = load_csv(p, m)
+            self.assertEqual((a.email, a.company), ("ana@co.io", "Co Inc"))  # mapped beats alias
+            with self.assertRaisesRegex(ValueError, "not in .*: nope"):
+                load_csv(p, {"nope": "email"})
+        with self.assertRaisesRegex(ValueError, "unknown field 'mail'"):
+            parse_mapping(["x=mail"])
+        with self.assertRaisesRegex(ValueError, "HEADER=FIELD"):
+            parse_mapping(["email"])
+        self.assertEqual(parse_mapping(["Score=Points=title"]), {"score=points": "title"})
+
     def test_sequence_fills_blanks_and_dept(self):
         lead = Lead(email="x@co.io", title="Growth Marketing Manager", tier="B", owner="sam@acme.io")
         first = build(lead, date(2026, 9, 28))[0]

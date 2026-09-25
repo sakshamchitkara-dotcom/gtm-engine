@@ -7,9 +7,10 @@ SLA hours per tier come from team.json "sla_hours"; tiers without one (D) are no
 With team.json "business_hours" ({"start": 9, "end": 18, "days": [0..4]}, Monday=0), only
 hours inside each rep's working day count, in the rep's zone from "timezones"
 ({"default": "America/Los_Angeles", "lena@acme.io": "Europe/Berlin"}). Without it, wall clock.
-ponytail: no holiday calendars; add a "holidays" date list to business_hours when needed.
+business_hours "holidays" skips whole local days: a list of ISO dates for everyone, or a dict
+keyed by rep email, then time zone name, then "default" ({"Europe/Berlin": ["2026-10-03"]}).
 """
-from datetime import datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from statistics import median
 from zoneinfo import ZoneInfo
 
@@ -21,14 +22,14 @@ def _ts(s):
     return datetime.fromisoformat(s).replace(tzinfo=None)
 
 
-def business_hours(start, end, tz, bh):
-    """Working hours between two naive-UTC datetimes, counted in zone tz."""
+def business_hours(start, end, tz, bh, holidays=()):
+    """Working hours between two naive-UTC datetimes, counted in zone tz; holidays are local dates."""
     utc = timezone.utc
     a = start.replace(tzinfo=utc).astimezone(tz)
     b = end.replace(tzinfo=utc).astimezone(tz)
     days, total, day = set(bh.get("days", range(5))), 0.0, a.date()
     while day <= b.date():
-        if day.weekday() in days:
+        if day.weekday() in days and day not in holidays:
             # convert to UTC before subtracting: same-tzinfo aware math ignores DST shifts
             lo = max(a, datetime.combine(day, time(bh.get("start", 9)), tz)).astimezone(utc)
             hi = min(b, datetime.combine(day, time(bh.get("end", 18)), tz)).astimezone(utc)
@@ -42,13 +43,17 @@ def _clock(team):
     bh = team.get("business_hours")
     if not bh:
         return lambda owner, a, b: (b - a).total_seconds() / 3600
-    zones = team.get("timezones", {})
-    tz = {}
+    zones, hol = team.get("timezones", {}), bh.get("holidays", [])
+    rep = {}
 
     def hours(owner, a, b):
-        if owner not in tz:
-            tz[owner] = ZoneInfo(zones.get(owner) or zones.get("default") or "UTC")
-        return business_hours(a, b, tz[owner], bh)
+        if owner not in rep:
+            zone = zones.get(owner) or zones.get("default") or "UTC"
+            days = hol if isinstance(hol, list) else next(
+                (hol[k] for k in (owner, zone, "default") if k in hol), [])
+            rep[owner] = ZoneInfo(zone), {date.fromisoformat(d) for d in days}
+        tz, off = rep[owner]
+        return business_hours(a, b, tz, bh, off)
     return hours
 
 
@@ -86,7 +91,8 @@ def report(store, team, now=None):
         o["within_pct"] = round(100 * o["within"] / o["touched"]) if o["touched"] else None
         rows.append(o)
     bh = team.get("business_hours")
-    clock = f"business hours {bh.get('start', 9)}-{bh.get('end', 18)}h, rep time zones" if bh else "wall clock"
+    clock = (f"business hours {bh.get('start', 9)}-{bh.get('end', 18)}h, rep time zones"
+             + (", holidays" if bh.get("holidays") else "")) if bh else "wall clock"
     return {"sla_hours": sla, "clock": clock, "owners": rows, "breaches": sorted(breaches, key=lambda b: -b["age_h"]),
             "untracked": untracked}
 

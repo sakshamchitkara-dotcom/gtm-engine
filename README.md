@@ -148,7 +148,9 @@ The in-sample AUC flatters the model. Out of sample (a different-seed 900-lead f
   `sla_hours` sets the time-to-first-touch target per tier (A 4h, B 24h, C 72h).
   `business_hours` (`start`/`end` hour, `days` with Monday=0) makes the SLA clock count only
   working hours, in each rep's zone from `timezones` (`default` + per-rep IANA names); remove it
-  for a wall clock.
+  for a wall clock. Its `holidays` skips whole local days: a list of `YYYY-MM-DD` for everyone,
+  or a dict keyed by rep email, then zone name, then `default`
+  (`{"default": ["2026-11-26"], "Europe/Berlin": ["2026-10-03"]}`).
 - `GTM_CONFIG_DIR`: a directory with your own `icp.json` / `team.json`; used by every command
   (the bundled files live inside the package, so this is how to customize a `pip install .`).
 - SMTP: `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_STARTTLS` (1).
@@ -175,7 +177,7 @@ responses written outside it). Fine for a team dashboard; put a real server in f
 
 - `gtm calibrate` reports in-sample AUC only; with a few hundred closed deals, hold some out
   before trusting small gains. It only reweights keys already in `icp.json`.
-- SLA business hours have no holiday calendar. `gtm sla --backfill` start times for pre-0.3.0
+- SLA holidays are dates you list in team.json; nothing ships a country calendar. `gtm sla --backfill` start times for pre-0.3.0
   leads are estimates (first stage event, else the row's last update).
 - Reply classification is regex rules; email verification never probes SMTP/MX.
 - The web API serializes all store work behind one lock.

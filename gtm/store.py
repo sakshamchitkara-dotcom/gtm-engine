@@ -70,6 +70,15 @@ class Store:
         r = self.db.execute("SELECT * FROM leads WHERE email=?", (email.lower(),)).fetchone()
         return self._record(r) if r else None
 
+    def peak_stages(self):
+        """{email: furthest stage before won/lost} from the stage events set_stage records."""
+        rank = {s: i for i, s in enumerate(STAGES[1:5], 1)}  # contacted..opportunity
+        peaks = {}
+        for email, kind in self.db.execute("SELECT email, kind FROM events"):
+            if kind in rank and rank[kind] > rank.get(peaks.get(email), 0):
+                peaks[email] = kind
+        return peaks
+
     def add_event(self, email, kind):
         with self.db:
             self.db.execute("INSERT INTO events (email, kind) VALUES (?,?)", (email.lower(), kind))

@@ -131,7 +131,7 @@ def main(argv=None):
             status, why = verify(e)
             print(f"{status:<8} {e}  {why}".rstrip())
     elif a.cmd == "report":
-        print(analytics.render(store.leads()))
+        print(analytics.render(store.leads(), store.peak_stages()))
     elif a.cmd == "accounts":
         print(accounts.render(accounts.rollup(store.leads()), a.limit))
     elif a.cmd == "export":

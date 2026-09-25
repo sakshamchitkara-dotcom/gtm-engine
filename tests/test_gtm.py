@@ -88,6 +88,9 @@ class GTMTest(unittest.TestCase):
             self.assertEqual(len(store.leads()), 10)
             stages = {r["email"]: r["stage"] for r in store.leads()}
             self.assertEqual(stages["priya@northwind.io"], "meeting")  # upsert keeps funnel stage
+            store.set_stage("priya@northwind.io", "lost")  # lost after the meeting
+            f = dict((s, n) for s, n, _ in analytics.funnel(store.leads(), store.peak_stages()))
+            self.assertEqual((f["contacted"], f["replied"], f["meeting"]), (1, 1, 1))
 
     def test_best_lead_decides_account_owner(self):
         with tempfile.TemporaryDirectory() as d:

@@ -81,61 +81,67 @@ def main(argv=None):
         from . import web
         return web.serve(a.db, a.host, a.port)
     store = Store(a.db)
+    try:
+        if a.cmd == "run":
+            leads, stats = pipeline.run(a.csv, store, a.config, a.start, a.asof)
+            print(f"rows={stats['rows']} kept={stats['kept']} invalid={stats['invalid']} "
+                  f"dupes={stats['duplicates']}+{stats['person_dupes']} undeliverable={stats['undeliverable']} "
+                  f"blocked={stats['blocked']} touches={stats['touches']}")
+        elif a.cmd == "leads":
+            for row in store.leads(a.tier)[: a.limit]:
+                print(f"{row['score']:>3} {row['tier']}  {row['email']:<32} {row['owner']}")
+        elif a.cmd == "today":
+            for x in store.touches_due(a.date):
+                print(f"{x['date']} {x['channel']:<8} {x['email']:<32} {x['subject']}")
+        elif a.cmd == "stage":
+            try:
+                store.set_stage(a.email, a.stage)
+            except KeyError:
+                sys.exit(f"stage: no lead {a.email!r} (import it with `gtm run` first)")
+            print(f"{a.email} -> {a.stage}")
+        elif a.cmd == "signals":
+            rows, skipped = intent.load_csv(a.csv)
+            print(f"signals loaded={store.add_signals(rows)} skipped={skipped} (re-run `gtm run` to rescore)")
+        elif a.cmd == "suppress":
+            for val in a.values:
+                store.suppress(val, a.reason)
+            if a.list or not a.values:
+                print("\n".join(sorted(store.suppressed())))
+        elif a.cmd == "unsubscribe":
+            compliance.unsubscribe(store, a.email)
+            print(f"{a.email} unsubscribed")
+        elif a.cmd == "reply":
+            label, note = replies.apply(store, a.email, sys.stdin.read() if a.text == "-" else a.text)
+            print(f"{a.email}: {label} -> {note}")
+        elif a.cmd == "experiment":
+            print(experiments.render(experiments.results(store.leads())))
+        elif a.cmd == "outbox":
+            try:
+                stats = outbox.send_due(store, a.date, load_team(a.team), a.out if a.dry_run else None)
+            except (RuntimeError, OSError) as e:  # missing config, SMTP down/auth failed
+                sys.exit(f"outbox: {e}")
+            print(" ".join(f"{k}={v}" for k, v in stats.items()) + (f"  (dry run -> {a.out}/{a.date}/)" if a.dry_run else ""))
+        elif a.cmd == "forecast":
+            print(forecast.render(store.leads()))
+        elif a.cmd == "digest":
+            if a.rep:
+                print(digest.render(store, a.rep, a.date))
+            else:
+                for path in digest.write_all(store, a.date, a.out):
+                    print(path)
+        elif a.cmd == "verify":
+            for e in a.emails:
+                status, why = verify(e)
+                print(f"{status:<8} {e}  {why}".rstrip())
+        elif a.cmd == "report":
+            print(analytics.render(store.leads(), store.peak_stages()))
+        elif a.cmd == "accounts":
+            print(accounts.render(accounts.rollup(store.leads()), a.limit))
+        elif a.cmd == "export":
+            crm.export(store.leads(a.tier), a.format, sys.stdout)
 
-    if a.cmd == "run":
-        leads, stats = pipeline.run(a.csv, store, a.config, a.start, a.asof)
-        print(f"rows={stats['rows']} kept={stats['kept']} invalid={stats['invalid']} "
-              f"dupes={stats['duplicates']}+{stats['person_dupes']} undeliverable={stats['undeliverable']} "
-              f"blocked={stats['blocked']} touches={stats['touches']}")
-    elif a.cmd == "leads":
-        for row in store.leads(a.tier)[: a.limit]:
-            print(f"{row['score']:>3} {row['tier']}  {row['email']:<32} {row['owner']}")
-    elif a.cmd == "today":
-        for x in store.touches_due(a.date):
-            print(f"{x['date']} {x['channel']:<8} {x['email']:<32} {x['subject']}")
-    elif a.cmd == "stage":
-        store.set_stage(a.email, a.stage)
-        print(f"{a.email} -> {a.stage}")
-    elif a.cmd == "signals":
-        rows, skipped = intent.load_csv(a.csv)
-        print(f"signals loaded={store.add_signals(rows)} skipped={skipped} (re-run `gtm run` to rescore)")
-    elif a.cmd == "suppress":
-        for val in a.values:
-            store.suppress(val, a.reason)
-        if a.list or not a.values:
-            print("\n".join(sorted(store.suppressed())))
-    elif a.cmd == "unsubscribe":
-        compliance.unsubscribe(store, a.email)
-        print(f"{a.email} unsubscribed")
-    elif a.cmd == "reply":
-        label, note = replies.apply(store, a.email, sys.stdin.read() if a.text == "-" else a.text)
-        print(f"{a.email}: {label} -> {note}")
-    elif a.cmd == "experiment":
-        print(experiments.render(experiments.results(store.leads())))
-    elif a.cmd == "outbox":
-        try:
-            stats = outbox.send_due(store, a.date, load_team(a.team), a.out if a.dry_run else None)
-        except (RuntimeError, OSError) as e:  # missing config, SMTP down/auth failed
-            sys.exit(f"outbox: {e}")
-        print(" ".join(f"{k}={v}" for k, v in stats.items()) + (f"  (dry run -> {a.out}/{a.date}/)" if a.dry_run else ""))
-    elif a.cmd == "forecast":
-        print(forecast.render(store.leads()))
-    elif a.cmd == "digest":
-        if a.rep:
-            print(digest.render(store, a.rep, a.date))
-        else:
-            for path in digest.write_all(store, a.date, a.out):
-                print(path)
-    elif a.cmd == "verify":
-        for e in a.emails:
-            status, why = verify(e)
-            print(f"{status:<8} {e}  {why}".rstrip())
-    elif a.cmd == "report":
-        print(analytics.render(store.leads(), store.peak_stages()))
-    elif a.cmd == "accounts":
-        print(accounts.render(accounts.rollup(store.leads()), a.limit))
-    elif a.cmd == "export":
-        crm.export(store.leads(a.tier), a.format, sys.stdout)
+    finally:
+        store.db.close()
 
 
 if __name__ == "__main__":

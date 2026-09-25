@@ -2,6 +2,8 @@
 from datetime import date, timedelta
 from string import Template
 
+from . import experiments
+
 # (day offset, channel, subject, body)
 CADENCES = {
     "A": [
@@ -52,6 +54,8 @@ def build(lead, start=None):
     }
     touches = []
     for n, (offset, channel, subject, body) in enumerate(steps, 1):
+        if n == 1:
+            subject = experiments.subject(lead) or subject
         day = start + timedelta(days=offset)
         while day.weekday() >= 5:  # skip weekends
             day += timedelta(days=1)

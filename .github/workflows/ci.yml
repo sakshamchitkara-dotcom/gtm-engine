@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.12", "3.13"]
+        python: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,8 +29,9 @@ jobs:
           GTM_API_TOKEN: ci-token
         run: |
           set -euo pipefail
-          pip install -e .
+          pip install .                        # non-editable: config must ship inside the package
           python scripts/gen_leads.py --out /tmp/gen --asof 2026-09-25
+          cd /tmp                              # run away from the checkout so nothing resolves from it
           gtm --db /tmp/ci.db signals /tmp/gen/signals.csv
           gtm --db /tmp/ci.db run /tmp/gen/leads.csv --start 2026-09-28 --asof 2026-09-25T18:00:00
           gtm --db /tmp/ci.db report

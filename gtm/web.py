@@ -174,6 +174,9 @@ class Handler(BaseHTTPRequestHandler):
     def get_app_js(self, q):
         return (HTTPStatus.OK, (STATIC / "app.js").read_bytes(), "text/javascript")
 
+    def get_favicon(self, q):  # browsers ask on every load; answer instead of logging a 404
+        return (HTTPStatus.NO_CONTENT, b"")
+
     def get_api_leads(self, q):
         rows = self.store.leads(q.get("tier"))
         if q.get("owner"):
@@ -231,7 +234,7 @@ class Handler(BaseHTTPRequestHandler):
         return (HTTPStatus.OK, f"<!doctype html><p>{escape(email)} is unsubscribed.</p>", "text/html")
 
 
-ROUTES = {("get", "/"): "get_index", ("get", "/app.js"): "get_app_js"}
+ROUTES = {("get", "/"): "get_index", ("get", "/app.js"): "get_app_js", ("get", "/favicon.ico"): "get_favicon"}
 ROUTES.update({(m, path): f"{m}_{path.strip('/').replace('/', '_')}" for m, path in [
     ("get", "/api/leads"), ("get", "/api/report"), ("get", "/api/forecast"), ("get", "/api/accounts"),
     ("post", "/api/leads"), ("post", "/api/signals"), ("post", "/api/replies"),

@@ -56,6 +56,7 @@ class WebTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn('<script src="/app.js">', html)
         self.assertIn("Authorization", self.call("/app.js", token=None)[1])
+        self.assertEqual(self.call("/favicon.ico", token=None), (204, ""))
 
     def test_gets(self):
         status, body = self.call("/api/leads?tier=A&limit=2")

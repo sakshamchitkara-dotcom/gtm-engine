@@ -2,6 +2,27 @@
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.0] - 2026-09-25
+
+Commits for this release carry real, unmodified timestamps.
+
+### Added
+- `gtm cohorts [--by both|month|source]`: per import month and lead source, the share that
+  reached contacted and meeting, won, lost and win rate among closed leads.
+- `gtm run --map HEADER=FIELD` (repeatable): read any CSV column as a lead field; mapped
+  columns win over the built-in header aliases.
+- SLA `business_hours.holidays`: ISO dates skipped as whole local days, as one list for every
+  rep or a dict keyed by rep email, then time zone, then `default`.
+- CLI tests for signals, unsubscribe, the outbox/notify/sla error exits and `serve` on a taken port.
+
+### Fixed
+- `gtm run` on a CSV with no recognizable email column reported every row invalid; it now
+  exits naming the headers and the `--map` fix.
+- Dashboard (checked in Chromium against the threaded server): a wrong API token said
+  "API token required" like no token at all; it now says "API token rejected". Long GDPR
+  block reasons no longer push the leads table past its panel. `/favicon.ico` returns 204
+  instead of logging a 404 on every load.
+
 ## [0.4.0] - 2026-09-25
 
 Commits for this release carry real, unmodified timestamps.

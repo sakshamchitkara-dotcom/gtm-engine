@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS touches (
 CREATE TABLE IF NOT EXISTS suppression (
     value TEXT PRIMARY KEY, reason TEXT, at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS signals (
+    target TEXT, signal TEXT, at TEXT, PRIMARY KEY (target, signal, at)
+);
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY, email TEXT, kind TEXT, at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -75,3 +78,12 @@ class Store:
     def clear_touches(self, email):
         with self.db:
             self.db.execute("DELETE FROM touches WHERE email=?", (email.lower(),))
+
+    def add_signals(self, signals):
+        """signals: iterable of (email_or_domain, signal, iso_at). Exact repeats are ignored."""
+        with self.db:
+            cur = self.db.executemany("INSERT OR IGNORE INTO signals VALUES (?,?,?)", signals)
+        return cur.rowcount
+
+    def signals(self):
+        return [tuple(r) for r in self.db.execute("SELECT target, signal, at FROM signals")]

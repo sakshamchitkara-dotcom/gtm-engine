@@ -28,6 +28,7 @@ def score(lead, cfg):
     # only the best keyword counts, so "Sales & Revenue Ops" doesn't stack
     kw = max((w for k, w in cfg["title_keywords"].items() if k in title), default=0)
     add(kw, "title keyword")
+    add(lead.intent, "intent signals")
     if lead.is_free_email:
         add(cfg["penalties"]["free_email"], "free email domain")
     if lead.email_status == "risky":

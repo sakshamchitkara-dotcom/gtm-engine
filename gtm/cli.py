@@ -1,9 +1,9 @@
 import argparse
 import csv
 import sys
-from datetime import date
+from datetime import date, datetime
 
-from . import analytics, compliance, pipeline
+from . import analytics, compliance, intent, pipeline
 from .store import STAGES, Store
 from .verify import verify
 
@@ -17,6 +17,7 @@ def main(argv=None):
     r.add_argument("csv")
     r.add_argument("--config")
     r.add_argument("--start", type=date.fromisoformat, help="cadence start date (YYYY-MM-DD)")
+    r.add_argument("--asof", type=datetime.fromisoformat, help="intent decay reference time (default now)")
 
     ls = sub.add_parser("leads", help="list scored leads")
     ls.add_argument("--tier")
@@ -37,6 +38,9 @@ def main(argv=None):
     ex = sub.add_parser("export", help="CRM-ready CSV to stdout")
     ex.add_argument("--tier")
 
+    sg = sub.add_parser("signals", help="load intent signals CSV (email,signal,at)")
+    sg.add_argument("csv")
+
     su = sub.add_parser("suppress", help="add emails or domains to the do-not-contact list")
     su.add_argument("values", nargs="*")
     su.add_argument("--reason", default="manual")
@@ -49,7 +53,7 @@ def main(argv=None):
     store = Store(a.db)
 
     if a.cmd == "run":
-        leads, stats = pipeline.run(a.csv, store, a.config, a.start)
+        leads, stats = pipeline.run(a.csv, store, a.config, a.start, a.asof)
         print(f"rows={stats['rows']} kept={stats['kept']} invalid={stats['invalid']} "
               f"dupes={stats['duplicates']}+{stats['person_dupes']} undeliverable={stats['undeliverable']} "
               f"blocked={stats['blocked']} touches={stats['touches']}")
@@ -62,6 +66,9 @@ def main(argv=None):
     elif a.cmd == "stage":
         store.set_stage(a.email, a.stage)
         print(f"{a.email} -> {a.stage}")
+    elif a.cmd == "signals":
+        rows, skipped = intent.load_csv(a.csv)
+        print(f"signals loaded={store.add_signals(rows)} skipped={skipped} (re-run `gtm run` to rescore)")
     elif a.cmd == "suppress":
         for val in a.values:
             store.suppress(val, a.reason)

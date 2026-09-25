@@ -3,7 +3,7 @@ import csv
 import sys
 from datetime import date, datetime
 
-from . import accounts, analytics, compliance, experiments, intent, outbox, pipeline, replies
+from . import accounts, analytics, compliance, experiments, forecast, intent, outbox, pipeline, replies
 from .routing import load_team
 from .store import STAGES, Store
 from .verify import verify
@@ -65,6 +65,8 @@ def main(argv=None):
     ob.add_argument("--out", default="outbox", help="dry-run output directory")
     ob.add_argument("--team", help="team config (default config/team.json)")
 
+    sub.add_parser("forecast", help="weighted pipeline per owner (stage prob x ACV)")
+
     a = p.parse_args(argv)
     store = Store(a.db)
 
@@ -101,6 +103,8 @@ def main(argv=None):
     elif a.cmd == "outbox":
         stats = outbox.send_due(store, a.date, load_team(a.team), a.out if a.dry_run else None)
         print(" ".join(f"{k}={v}" for k, v in stats.items()) + (f"  (dry run -> {a.out}/{a.date}/)" if a.dry_run else ""))
+    elif a.cmd == "forecast":
+        print(forecast.render(store.leads()))
     elif a.cmd == "verify":
         for e in a.emails:
             status, why = verify(e)

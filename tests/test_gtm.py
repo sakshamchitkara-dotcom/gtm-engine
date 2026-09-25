@@ -101,6 +101,16 @@ class GTMTest(unittest.TestCase):
             self.assertIn(vp.owner, ("maya@acme.io", "jordan@acme.io"))  # AE pool, not SDR
             self.assertEqual(ic.owner, vp.owner)
 
+    def test_rerun_keeps_owners_when_new_leads_arrive(self):
+        mk = lambda e: Lead(email=e, title="Manager", employees=60, industry="saas", country="US", source="webinar")
+        with tempfile.TemporaryDirectory() as d:
+            store = Store(f"{d}/t.db")
+            pipeline.process([mk("a@one.io")], store)
+            before = store.lead("a@one.io")["owner"]
+            pipeline.process([mk("b@two.io"), mk("c@one.io"), mk("a@one.io")], store)  # new lead routed first
+            self.assertEqual(store.lead("a@one.io")["owner"], before)
+            self.assertEqual(store.lead("c@one.io")["owner"], before)  # account stays sticky across runs
+
     def test_config_dir_override(self):
         import json, os
         from unittest import mock

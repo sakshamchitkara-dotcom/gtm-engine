@@ -29,6 +29,7 @@ def process(leads, store, cfg=None, start=None, asof=None, team=None, router=Non
     for lead in leads:
         lead.intent = intent.for_lead(enrich(lead), pts)
         score(lead, cfg)
+    router.seed(store.leads())
     # best lead first: the first routed lead at a domain claims the account for its pool
     for lead in sorted(leads, key=lambda l: -l.score):
         router.assign(lead)

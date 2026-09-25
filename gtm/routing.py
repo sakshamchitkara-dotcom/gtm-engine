@@ -44,6 +44,17 @@ class Router:
         self._next = dict.fromkeys(self._pools, 0)
         self.load = {}
         self.accounts = {}  # domain -> owner
+        self.known = {}     # email -> owner from earlier runs
+
+    def seed(self, rows):
+        """Owners already in the store (Store.leads(), best first): a lead keeps its rep across
+        re-runs and its account stays with that rep, as long as the rep is still on the team."""
+        reps = {rep for pool in self._pools.values() for rep in pool}
+        for r in rows:
+            if r["owner"] in reps:
+                self.known[r["email"]] = r["owner"]
+                if not r.get("is_free_email") and r.get("domain"):
+                    self.accounts.setdefault(r["domain"], r["owner"])
 
     def _pick(self, key):
         pool = self._pools.get(key) or []
@@ -61,8 +72,8 @@ class Router:
             lead.owner = "nurture"
             return lead
         domain = "" if lead.is_free_email else lead.domain
-        if domain in self.accounts:
-            lead.owner = self.accounts[domain]
+        if lead.email in self.known or domain in self.accounts:
+            lead.owner = self.known.get(lead.email) or self.accounts[domain]
             self.load[lead.owner] = self.load.get(lead.owner, 0) + 1
             return lead
         role = "ae" if lead.tier == "A" and lead.size_band in ("upper_mid", "enterprise") else "sdr"

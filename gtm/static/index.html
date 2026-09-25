@@ -28,6 +28,9 @@
   td.bar-cell { width: 45%; }
   .bar { height: 8px; background: var(--accent); border-radius: 4px; }
   select, input, button { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
+  /* the filter sits inside an h2; don't let it inherit the heading's bold/uppercase look */
+  h2 select { font-weight: 400; text-transform: none; letter-spacing: normal; margin-left: 6px; }
+  h2 .count { font-weight: 400; text-transform: none; letter-spacing: normal; margin-left: 6px; }
   #auth { display: none; gap: 8px; }
 </style>
 </head>
@@ -42,7 +45,7 @@
   <section><h2>Tier mix</h2><table id="tiers"></table></section>
   <section class="wide"><h2>Forecast</h2><table id="forecast"></table></section>
   <section class="wide">
-    <h2>Leads <select id="tier" aria-label="Tier filter"><option value="">all tiers</option><option>A</option><option>B</option><option>C</option><option>D</option></select></h2>
+    <h2>Leads <select id="tier" aria-label="Tier filter"><option value="">all tiers</option><option>A</option><option>B</option><option>C</option><option>D</option></select><span class="count" id="lead-count"></span></h2>
     <table id="leads"></table>
   </section>
 </main>

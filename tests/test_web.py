@@ -49,6 +49,12 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.call("/api/leads", token="wrong")[0], 401)
         self.assertEqual(self.call("/api/nope")[0], 404)
 
+    def test_dashboard_is_public_but_data_is_not(self):
+        status, html = self.call("/", token=None)
+        self.assertEqual(status, 200)
+        self.assertIn('<script src="/app.js">', html)
+        self.assertIn("Authorization", self.call("/app.js", token=None)[1])
+
     def test_gets(self):
         status, body = self.call("/api/leads?tier=A&limit=2")
         rows = json.loads(body)

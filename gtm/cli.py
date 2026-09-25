@@ -113,7 +113,10 @@ def main(argv=None):
     elif a.cmd == "experiment":
         print(experiments.render(experiments.results(store.leads())))
     elif a.cmd == "outbox":
-        stats = outbox.send_due(store, a.date, load_team(a.team), a.out if a.dry_run else None)
+        try:
+            stats = outbox.send_due(store, a.date, load_team(a.team), a.out if a.dry_run else None)
+        except (RuntimeError, OSError) as e:  # missing config, SMTP down/auth failed
+            sys.exit(f"outbox: {e}")
         print(" ".join(f"{k}={v}" for k, v in stats.items()) + (f"  (dry run -> {a.out}/{a.date}/)" if a.dry_run else ""))
     elif a.cmd == "forecast":
         print(forecast.render(store.leads()))

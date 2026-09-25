@@ -83,7 +83,7 @@ def send_due(store, on_date, team, out_dir=None, transport=None):
     """
     dry = out_dir is not None
     suppressed, sent = store.suppressed(), store.sent_keys()
-    stats = {"sent": 0, "skipped_sent": 0, "skipped_contact": 0, "capped": 0}
+    stats = {"sent": 0, "skipped_sent": 0, "skipped_contact": 0, "capped": 0, "refused": 0}
     used = {}
     transport = None if dry else (transport or SMTPTransport())
     try:
@@ -111,7 +111,11 @@ def send_due(store, on_date, team, out_dir=None, transport=None):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(bytes(msg))
             else:
-                transport.send_message(msg)
+                try:
+                    transport.send_message(msg)
+                except smtplib.SMTPRecipientsRefused:
+                    stats["refused"] += 1  # bad address: skip it, keep the run going
+                    continue
                 store.record_send(t["email"], t["step"], owner, on_date)
                 if lead["stage"] == "new":
                     store.set_stage(t["email"], "contacted")

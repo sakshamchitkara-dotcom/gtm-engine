@@ -8,17 +8,20 @@ GET|POST /unsubscribe?email=&token=             -> one-click unsubscribe (RFC 80
 
 If GTM_API_TOKEN is set, every /api/* call needs "Authorization: Bearer <token>".
 
-ponytail: single-threaded HTTPServer sharing one SQLite connection. Fine for a
-team dashboard; put a real WSGI server in front if you expose it to traffic.
+Threaded server: request bodies are read and responses written outside a lock,
+so one slow client never stalls the others.
+ponytail: one global lock around store work (the SQLite connection is shared).
+Fine for a team dashboard; use per-thread connections + WAL if writes pile up.
 """
 import hmac
 import json
 import os
 import re
 import sys
+import threading
 from html import escape
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -93,6 +96,7 @@ class Handler(BaseHTTPRequestHandler):
     store = None       # set by make_server
     router = None      # one Router for the server's lifetime so round-robin advances across requests
     api_token = None
+    lock = None        # guards store + router; routes return (status, payload[, ctype]) and never write
     unsub_secret = None
     server_version = "gtm-engine"
 
@@ -116,15 +120,17 @@ class Handler(BaseHTTPRequestHandler):
         given = self.headers.get("Authorization", "")
         return hmac.compare_digest(given.encode(), f"Bearer {self.api_token}".encode())
 
-    def _body(self, want_json=True):
+    def _read_body(self):
+        """Reads the raw POST body before the store lock is taken."""
         length = self.headers.get("Content-Length")
         if length is None or not length.isdigit():
             raise BadRequest("Content-Length required", HTTPStatus.LENGTH_REQUIRED)
         if int(length) > MAX_BODY:
             raise BadRequest("body too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
-        raw = self.rfile.read(int(length))
-        if not want_json:
-            return raw
+        return self.rfile.read(int(length))
+
+    def _body(self):
+        raw = self._raw
         if not self.headers.get("Content-Type", "").startswith("application/json"):
             raise BadRequest("Content-Type must be application/json", HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
         try:
@@ -142,12 +148,15 @@ class Handler(BaseHTTPRequestHandler):
         if url.path.startswith("/api/") and not self._authorized():
             return self._send(HTTPStatus.UNAUTHORIZED, {"error": "missing or bad bearer token"})
         try:
-            route(q)
+            self._raw = self._read_body() if method == "post" else b""
+            with self.lock:
+                result = route(q)
         except BadRequest as e:
-            self._send(e.status, {"error": e.detail})
+            result = e.status, {"error": e.detail}
         except Exception as e:  # never leak a traceback to the client
             print(f"error handling {method.upper()} {url.path}: {e!r}", file=sys.stderr)
-            self._send(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal error"})
+            result = HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal error"}
+        self._send(*result)
 
     def do_GET(self):
         self._dispatch("get")
@@ -160,10 +169,10 @@ class Handler(BaseHTTPRequestHandler):
 
     # --- routes ---------------------------------------------------------
     def get_index(self, q):
-        self._send(HTTPStatus.OK, (STATIC / "index.html").read_bytes(), "text/html")
+        return (HTTPStatus.OK, (STATIC / "index.html").read_bytes(), "text/html")
 
     def get_app_js(self, q):
-        self._send(HTTPStatus.OK, (STATIC / "app.js").read_bytes(), "text/javascript")
+        return (HTTPStatus.OK, (STATIC / "app.js").read_bytes(), "text/javascript")
 
     def get_api_leads(self, q):
         rows = self.store.leads(q.get("tier"))
@@ -172,33 +181,33 @@ class Handler(BaseHTTPRequestHandler):
         limit = q.get("limit", "100")
         if not limit.isdigit():
             raise BadRequest("limit must be a positive integer")
-        self._send(HTTPStatus.OK, rows[: min(int(limit), 1000)])
+        return (HTTPStatus.OK, rows[: min(int(limit), 1000)])
 
     def get_api_report(self, q):
         rows = self.store.leads()
         funnel = [{"stage": s, "count": n, "conversion": c} for s, n, c in analytics.funnel(rows)]
-        self._send(HTTPStatus.OK, {**analytics.summary(rows), "funnel": funnel})
+        return (HTTPStatus.OK, {**analytics.summary(rows), "funnel": funnel})
 
     def get_api_forecast(self, q):
-        self._send(HTTPStatus.OK, forecast.forecast(self.store.leads()))
+        return (HTTPStatus.OK, forecast.forecast(self.store.leads()))
 
     def get_api_accounts(self, q):
-        self._send(HTTPStatus.OK, accounts.rollup(self.store.leads())[:100])
+        return (HTTPStatus.OK, accounts.rollup(self.store.leads())[:100])
 
     def post_api_leads(self, q):
         leads, stats = pipeline.process(parse_leads(self._body()), self.store, router=self.router)
-        self._send(HTTPStatus.CREATED, {"stats": stats, "leads": [
+        return (HTTPStatus.CREATED, {"stats": stats, "leads": [
             {k: getattr(l, k) for k in ("email", "score", "tier", "owner", "email_status", "blocked")}
             for l in leads]})
 
     def post_api_signals(self, q):
         n = self.store.add_signals(parse_signals(self._body()))
-        self._send(HTTPStatus.CREATED, {"inserted": n, "note": "scores pick up signals on the next pipeline run"})
+        return (HTTPStatus.CREATED, {"inserted": n, "note": "scores pick up signals on the next pipeline run"})
 
     def post_api_replies(self, q):
         email, text = parse_reply(self._body())
         label, note = replies.apply(self.store, email, text)
-        self._send(HTTPStatus.OK, {"email": email, "label": label, "action": note})
+        return (HTTPStatus.OK, {"email": email, "label": label, "action": note})
 
     def _check_unsub(self, q):
         email, token = q.get("email", ""), q.get("token", "")
@@ -211,16 +220,15 @@ class Handler(BaseHTTPRequestHandler):
     def get_unsubscribe(self, q):
         # a GET must not unsubscribe (link scanners prefetch); show a one-button form instead
         email = self._check_unsub(q)
-        self._send(HTTPStatus.OK, f"""<!doctype html><title>Unsubscribe</title>
+        return (HTTPStatus.OK, f"""<!doctype html><title>Unsubscribe</title>
 <form method="post"><p>Stop emails to <b>{escape(email)}</b>?</p>
 <input type="hidden" name="List-Unsubscribe" value="One-Click"><button>Unsubscribe</button></form>""",
                    "text/html")
 
     def post_unsubscribe(self, q):
         email = self._check_unsub(q)
-        self._body(want_json=False)
         compliance.unsubscribe(self.store, email, "one-click")
-        self._send(HTTPStatus.OK, f"<!doctype html><p>{escape(email)} is unsubscribed.</p>", "text/html")
+        return (HTTPStatus.OK, f"<!doctype html><p>{escape(email)} is unsubscribed.</p>", "text/html")
 
 
 ROUTES = {("get", "/"): "get_index", ("get", "/app.js"): "get_app_js"}
@@ -233,9 +241,11 @@ ROUTES.update({(m, path): f"{m}_{path.strip('/').replace('/', '_')}" for m, path
 
 def make_server(store, host="127.0.0.1", port=8000, env=os.environ):
     handler = type("GTMHandler", (Handler,), {
-        "store": store, "router": Router(), "api_token": env.get("GTM_API_TOKEN") or None,
+        "store": store, "router": Router(), "lock": threading.Lock(), "api_token": env.get("GTM_API_TOKEN") or None,
         "unsub_secret": env.get("GTM_UNSUB_SECRET") or None})
-    return HTTPServer((host, port), handler)
+    srv = ThreadingHTTPServer((host, port), handler)
+    srv.daemon_threads = True
+    return srv
 
 
 def serve(db, host, port):

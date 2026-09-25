@@ -5,6 +5,6 @@
   "countries": {"US": 10, "CA": 8, "GB": 8, "DE": 6, "IN": 5, "AU": 5},
   "title_keywords": {"revenue": 10, "sales": 8, "growth": 8, "marketing": 5, "revops": 12, "operations": 5},
   "sources": {"demo_request": 20, "webinar": 8, "content": 4, "list": 0},
-  "penalties": {"free_email": -30},
+  "penalties": {"free_email": -30, "risky_email": -10},
   "tiers": {"A": 80, "B": 55, "C": 30}
 }

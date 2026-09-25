@@ -30,6 +30,8 @@ def score(lead, cfg):
     add(kw, "title keyword")
     if lead.is_free_email:
         add(cfg["penalties"]["free_email"], "free email domain")
+    if lead.email_status == "risky":
+        add(cfg["penalties"].get("risky_email", 0), "risky email")
 
     lead.score = max(0, min(100, points))
     lead.reasons = reasons

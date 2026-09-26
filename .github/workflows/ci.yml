@@ -35,6 +35,11 @@ jobs:
           gtm --db /tmp/ci.db signals /tmp/gen/signals.csv
           gtm --db /tmp/ci.db run /tmp/gen/leads.csv --start 2026-09-28 --asof 2026-09-25T18:00:00
           gtm --db /tmp/ci.db report
+          gtm --db /tmp/ci.db cohorts --by source | grep -q "win rate"
+          sed '1s/^Email,/Contact Work Email,/' /tmp/gen/leads.csv > /tmp/mapped.csv
+          if gtm --db /tmp/ci3.db run /tmp/mapped.csv 2> /tmp/err; then exit 1; fi
+          grep -q "no email column" /tmp/err
+          gtm --db /tmp/ci3.db run /tmp/mapped.csv --map "Contact Work Email=email" | grep -q "kept=470"
           gtm --db /tmp/ci.db forecast
           gtm --db /tmp/ci.db digest --date 2026-09-28 --out /tmp/digests
           gtm --db /tmp/ci.db outbox --date 2026-09-28 --dry-run --out /tmp/outbox
